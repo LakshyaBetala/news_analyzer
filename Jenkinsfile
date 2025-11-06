@@ -115,21 +115,37 @@ pipeline {
                 script {
                     echo "Deploying application..."
                     sh """
-                        # Stop existing container if running
-                        ${PODMAN} stop ${IMAGE_NAME} || true
-                        ${PODMAN} rm ${IMAGE_NAME} || true
+                        # Stop and remove existing container (ignore errors)
+                        ${PODMAN} stop ${IMAGE_NAME} 2>/dev/null || true
+                        ${PODMAN} rm ${IMAGE_NAME} 2>/dev/null || true
+                        
+                        # Find and stop any container using port 5000
+                        CONTAINER_ON_PORT=\$(${PODMAN} ps --format "{{.Names}}" --filter "publish=5000" 2>/dev/null | head -1 || echo "")
+                        if [ ! -z "\$CONTAINER_ON_PORT" ]; then
+                            echo "Stopping container using port 5000: \$CONTAINER_ON_PORT"
+                            ${PODMAN} stop \$CONTAINER_ON_PORT 2>/dev/null || true
+                            ${PODMAN} rm \$CONTAINER_ON_PORT 2>/dev/null || true
+                        fi
+                        
+                        # Alternative: Kill process on port 5000 if container method fails
+                        if command -v fuser >/dev/null 2>&1; then
+                            sudo fuser -k 5000/tcp 2>/dev/null || true
+                            sleep 2
+                        fi
                         
                         # Run new container
                         # Use registry image if available, otherwise use local image
                         if ${PODMAN} image exists ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION} 2>/dev/null; then
                             ${PODMAN} run -d \\
                                 --name ${IMAGE_NAME} \\
+                                --replace \\
                                 -p 5000:5000 \\
                                 -e APP_VERSION=${APP_VERSION} \\
                                 ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
                         else
                             ${PODMAN} run -d \\
                                 --name ${IMAGE_NAME} \\
+                                --replace \\
                                 -p 5000:5000 \\
                                 -e APP_VERSION=${APP_VERSION} \\
                                 ${IMAGE_NAME}:${APP_VERSION}
