@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Credibility Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .version {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        
+        label i {
+            margin-right: 8px;
+            color: var(--primary);
+        }
+        
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+        
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+            border-left: 4px solid var(--danger);
+        }
+        
+        .error.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        .results {
+            margin-top: 30px;
+            display: none;
+            animation: fadeInUp 0.5s ease;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .score-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .score-label {
+            font-size: 1.1rem;
+            color: #64748b;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .score-value {
+            font-size: 4rem;
+            font-weight: 700;
+            margin: 15px 0;
+            transition: color 0.3s ease;
+        }
+        
+        .score-value.high {
+            color: var(--success);
+        }
+        
+        .score-value.medium {
+            color: var(--warning);
+        }
+        
+        .score-value.low {
+            color: var(--danger);
+        }
+        
+        .score-bar-container {
+            margin-top: 20px;
+        }
+        
+        .score-bar {
+            width: 100%;
+            height: 40px;
+            background: #e2e8f0;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .score-fill {
+            height: 100%;
+            transition: width 1s ease, background 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .score-fill.high {
+            background: linear-gradient(90deg, var(--success) 0%, #059669 100%);
+        }
+        
+        .score-fill.medium {
+            background: linear-gradient(90deg, var(--warning) 0%, #d97706 100%);
+        }
+        
+        .score-fill.low {
+            background: linear-gradient(90deg, var(--danger) 0%, #dc2626 100%);
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            font-size: 1.2rem;
+        }
+        
+        .risk-factors,
+        .recommendations {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .risk-factors li,
+        .recommendations li {
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            background: white;
+            border-left: 4px solid;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .risk-factors li:hover,
+        .recommendations li:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .risk-factors li {
+            border-left-color: var(--danger);
+            background: #fef2f2;
+        }
+        
+        .risk-factors li i {
+            color: var(--danger);
+            margin-top: 2px;
+        }
+        
+        .recommendations li {
+            border-left-color: var(--success);
+            background: #f0fdf4;
+        }
+        
+        .recommendations li i {
+            color: var(--success);
+            margin-top: 2px;
+        }
+        
+        .analysis-details {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .analysis-details h4 {
+            color: #475569;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .detail-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .detail-item .label {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+        
+        .detail-item .value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 25px;
+            }
+            
+            .score-value {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-newspaper"></i> News Credibility Analyzer</h1>
+            <div class="subtitle">Real-time analysis of news article credibility</div>
+            <div class="version">Version {{ version }}</div>
+        </div>
+        
+        <div class="content">
+            <form id="analyzeForm">
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="title"><i class="fas fa-heading"></i> Article Title *</label>
+                        <input type="text" id="title" name="title" required 
+                               placeholder="Enter the article title">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="content"><i class="fas fa-align-left"></i> Article Content *</label>
+                        <textarea id="content" name="content" required 
+                                  placeholder="Paste the article content here..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="source"><i class="fas fa-building"></i> Source (Optional)</label>
+                        <input type="text" id="source" name="source" 
+                               placeholder="e.g., Reuters, BBC, Times Now, etc.">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-primary" id="analyzeBtn">
+                    <i class="fas fa-search"></i>
+                    <span>Analyze Credibility</span>
+                </button>
+            </form>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="color: var(--primary); font-weight: 600;">Analyzing article credibility...</p>
+            </div>
+            
+            <div class="error" id="error"></div>
+            
+            <div class="results" id="results">
+                <div class="score-card">
+                    <div class="score-label">Credibility Score</div>
+                    <div class="score-value" id="scoreValue">0</div>
+                    <div class="score-bar-container">
+                        <div class="score-bar">
+                            <div class="score-fill" id="scoreFill" style="width: 0%">
+                                <span id="scoreText">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">
+                        <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
+                        Risk Factors
+                    </div>
+                    <ul class="risk-factors" id="riskFactors"></ul>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">
+                        <i class="fas fa-lightbulb" style="color: var(--success);"></i>
+                        Recommendations
+                    </div>
+                    <ul class="recommendations" id="recommendations"></ul>
+                </div>
+                
+                <div class="analysis-details" id="analysisDetails" style="display: none;">
+                    <h4>Analysis Details</h4>
+                    <div class="detail-grid" id="detailGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('analyzeForm');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Reset UI
+            results.classList.remove('show');
+            error.classList.remove('show');
+            loading.classList.add('show');
+            analyzeBtn.disabled = true;
+            
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const source = document.getElementById('source').value;
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title, content, source })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+                
+                // Display results
+                displayResults(data);
+                
+            } catch (err) {
+                error.innerHTML = `<i class="fas fa-exclamation-circle"></i> <strong>Error:</strong> ${err.message}`;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                analyzeBtn.disabled = false;
+            }
+        });
+        
+        function getScoreClass(score) {
+            if (score >= 70) return 'high';
+            if (score >= 40) return 'medium';
+            return 'low';
+        }
+        
+        function displayResults(data) {
+            const score = data.credibility_score;
+            const scoreClass = getScoreClass(score);
+            
+            // Update score value
+            const scoreValue = document.getElementById('scoreValue');
+            scoreValue.textContent = score.toFixed(1);
+            scoreValue.className = `score-value ${scoreClass}`;
+            
+            // Update score bar
+            const scoreFill = document.getElementById('scoreFill');
+            const scoreText = document.getElementById('scoreText');
+            scoreFill.style.width = score + '%';
+            scoreFill.className = `score-fill ${scoreClass}`;
+            scoreText.textContent = score.toFixed(1) + '%';
+            
+            // Update risk factors
+            const riskFactorsList = document.getElementById('riskFactors');
+            riskFactorsList.innerHTML = '';
+            if (data.risk_factors && data.risk_factors.length > 0) {
+                data.risk_factors.forEach(factor => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="fas fa-exclamation-circle"></i><span>${factor}</span>`;
+                    riskFactorsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.innerHTML = '<i class="fas fa-check-circle"></i><span>No significant risk factors identified</span>';
+                li.style.borderLeftColor = 'var(--success)';
+                li.style.background = '#f0fdf4';
+                riskFactorsList.appendChild(li);
+            }
+            
+            // Update recommendations
+            const recommendationsList = document.getElementById('recommendations');
+            recommendationsList.innerHTML = '';
+            if (data.recommendations && data.recommendations.length > 0) {
+                data.recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="fas fa-check-circle"></i><span>${rec}</span>`;
+                    recommendationsList.appendChild(li);
+                });
+            }
+            
+            // Show analysis details if available
+            if (data.analysis_details) {
+                const detailsDiv = document.getElementById('analysisDetails');
+                const detailGrid = document.getElementById('detailGrid');
+                detailGrid.innerHTML = '';
+                
+                const details = [
+                    { label: 'Credible Indicators', value: data.analysis_details.credible_indicators || 0 },
+                    { label: 'Suspicious Indicators', value: data.analysis_details.suspicious_indicators || 0 },
+                    { label: 'Emotional Patterns', value: data.analysis_details.emotional_manipulation || 0 },
+                    { label: 'Source Score', value: (data.analysis_details.source_credibility || 0).toFixed(1) }
+                ];
+                
+                details.forEach(detail => {
+                    const item = document.createElement('div');
+                    item.className = 'detail-item';
+                    item.innerHTML = `
+                        <div class="label">${detail.label}</div>
+                        <div class="value">${detail.value}</div>
+                    `;
+                    detailGrid.appendChild(item);
+                });
+                
+                detailsDiv.style.display = 'block';
+            }
+            
+            // Show results with animation
+            results.classList.add('show');
+            
+            // Scroll to results
+            results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
+</body>
+</html>
