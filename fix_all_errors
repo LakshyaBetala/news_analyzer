@@ -1,5 +1,387 @@
 # Fix All Jenkins Errors - Complete Solutions
 
+## Error: cannot find UID/GID for user jenkins: no subuid ranges found
+
+### This is a Podman rootless mode configuration issue
+
+### Solution 1: Configure subuid/subgid for jenkins user (TERMINAL FIX - REQUIRED)
+
+**Run these commands in WSL terminal:**
+
+```bash
+# Check current subuid/subgid
+cat /etc/subuid
+cat /etc/subgid
+
+# Add jenkins user to subuid/subgid
+echo "jenkins:100000:65536" | sudo tee -a /etc/subuid
+echo "jenkins:100000:65536" | sudo tee -a /etc/subgid
+
+# Verify
+grep jenkins /etc/subuid
+grep jenkins /etc/subgid
+
+# Migrate Podman for jenkins user
+sudo -u jenkins podman system migrate
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### Solution 2: Use rootful Podman (Alternative - TERMINAL FIX)
+
+**If rootless doesn't work, configure Jenkins to use rootful Podman:**
+
+```bash
+# Enable rootful Podman socket
+sudo systemctl enable --now podman.socket
+
+# Add jenkins to podman group
+sudo usermod -aG podman jenkins
+
+# Configure Jenkins to use rootful socket
+sudo mkdir -p /var/lib/jenkins/.config/containers
+sudo tee /var/lib/jenkins/.config/containers/containers.conf << EOF
+[engine]
+events_logger = "file"
+runtime = "crun"
+
+[network]
+default_rootless_network_cmd = "slirp4netns"
+EOF
+
+# Set ownership
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.config
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### Solution 3: Use Docker instead of Podman (Quick Alternative)
+
+**If Podman continues to have issues, switch to Docker:**
+
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Add jenkins to docker group
+sudo usermod -aG docker jenkins
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+
+# Update Jenkinsfile: Change "podman" to "docker"
+```
+
+### Solution 4: Fix in Jenkinsfile (Use rootful Podman)
+
+**Update Jenkinsfile to use rootful Podman:**
+
+```groovy
+environment {
+    PODMAN = 'sudo podman'  // Use sudo for rootful mode
+}
+```
+
+**Then in stages, use:**
+```groovy
+sh """
+    ${PODMAN} build -t ${IMAGE_NAME}:${APP_VERSION} .
+"""
+```
+
+**Note:** Jenkins user needs passwordless sudo for Podman:
+```bash
+echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/podman" | sudo tee /etc/sudoers.d/jenkins-podman
+```
+
+### Solution 5: Complete Fix Script (Copy-Paste)
+
+```bash
+#!/bin/bash
+# Fix Podman rootless for Jenkins
+
+# Add subuid/subgid
+echo "jenkins:100000:65536" | sudo tee -a /etc/subuid
+echo "jenkins:100000:65536" | sudo tee -a /etc/subgid
+
+# Verify
+echo "=== SubUID ==="
+grep jenkins /etc/subuid
+echo "=== SubGID ==="
+grep jenkins /etc/subgid
+
+# Migrate Podman
+sudo -u jenkins podman system migrate
+
+# Configure registries
+sudo mkdir -p /var/lib/jenkins/.config/containers
+sudo tee /var/lib/jenkins/.config/containers/registries.conf << EOF
+[[registry]]
+location = "localhost:5000"
+insecure = true
+EOF
+
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.config
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+
+echo "Done! Test with: sudo -u jenkins podman ps"
+```
+
+### Verification
+
+```bash
+# Test Podman as jenkins user
+sudo -u jenkins podman ps
+
+# Test build
+sudo -u jenkins podman build --help
+
+# Check Jenkins can pull images
+sudo -u jenkins podman pull hello-world
+```
+
+---
+
+## Error: newuidmap: write to uid_map failed / invalid internal status
+
+### This is a Podman namespace mapping issue
+
+### Solution 1: Reset Podman and reconfigure (TERMINAL FIX)
+
+```bash
+# Remove existing Podman data for jenkins
+sudo rm -rf /var/lib/jenkins/.local/share/containers
+
+# Reset Podman system
+sudo -u jenkins podman system reset -f
+
+# Re-migrate
+sudo -u jenkins podman system migrate
+
+# Verify subuid/subgid are correct
+cat /etc/subuid | grep jenkins
+cat /etc/subgid | grep jenkins
+
+# Should show: jenkins:100000:65536
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### Solution 2: Fix subuid/subgid ranges (TERMINAL FIX)
+
+**The ranges might conflict. Use different ranges:**
+
+```bash
+# Remove old entries
+sudo sed -i '/^jenkins:/d' /etc/subuid
+sudo sed -i '/^jenkins:/d' /etc/subgid
+
+# Add new entries with different range
+echo "jenkins:165536:65536" | sudo tee -a /etc/subuid
+echo "jenkins:165536:65536" | sudo tee -a /etc/subgid
+
+# Verify
+grep jenkins /etc/subuid
+grep jenkins /etc/subgid
+
+# Reset Podman
+sudo -u jenkins podman system reset -f
+sudo -u jenkins podman system migrate
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### Solution 3: Use rootful Podman (RECOMMENDED - TERMINAL FIX)
+
+**This avoids all rootless issues:**
+
+```bash
+# Stop rootless Podman (ignore errors if it fails)
+sudo -u jenkins podman system reset -f 2>/dev/null || true
+
+# Create podman group if it doesn't exist
+sudo groupadd podman 2>/dev/null || echo "Group podman already exists"
+
+# Enable rootful Podman socket
+sudo systemctl enable --now podman.socket
+
+# Add jenkins to podman group
+sudo usermod -aG podman jenkins
+
+# Verify group was added
+groups jenkins | grep podman || echo "Warning: podman group not found in jenkins groups"
+
+# Configure passwordless sudo for podman
+echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/podman" | sudo tee /etc/sudoers.d/jenkins-podman
+
+# Verify sudoers file
+sudo visudo -c
+
+# Update Jenkinsfile to use sudo podman
+# Change PODMAN = '/usr/bin/podman' to PODMAN = 'sudo /usr/bin/podman'
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+
+# Test
+sudo -u jenkins sudo podman ps
+```
+
+**Then update Jenkinsfile environment:**
+```groovy
+environment {
+    PODMAN = 'sudo /usr/bin/podman'
+}
+```
+
+**And use ${PODMAN} in all stages instead of just "podman"**
+
+### Solution 3B: Complete Rootful Setup Script (TERMINAL FIX - COPY-PASTE)
+
+**Run this complete script:**
+
+```bash
+#!/bin/bash
+# Complete fix for Podman rootful mode
+
+# Create podman group
+sudo groupadd podman 2>/dev/null || true
+
+# Reset rootless Podman
+sudo -u jenkins podman system reset -f 2>/dev/null || true
+
+# Enable rootful socket
+sudo systemctl enable --now podman.socket
+
+# Add jenkins to podman group
+sudo usermod -aG podman jenkins
+
+# Configure passwordless sudo
+echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/podman" | sudo tee /etc/sudoers.d/jenkins-podman
+sudo chmod 0440 /etc/sudoers.d/jenkins-podman
+sudo visudo -c
+
+# Configure registries
+sudo mkdir -p /var/lib/jenkins/.config/containers
+sudo tee /var/lib/jenkins/.config/containers/registries.conf << EOF
+[[registry]]
+location = "localhost:5000"
+insecure = true
+EOF
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.config
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+
+echo "✅ Done! Update Jenkinsfile: PODMAN = 'sudo /usr/bin/podman'"
+```
+
+**Or use the provided script file:**
+```bash
+chmod +x FIX_PODMAN_ROOTFUL.sh
+sudo ./FIX_PODMAN_ROOTFUL.sh
+```
+
+### Solution 4: Complete Reset Script (TERMINAL FIX)
+
+```bash
+#!/bin/bash
+# Complete Podman reset and fix
+
+# Remove Podman data
+sudo rm -rf /var/lib/jenkins/.local/share/containers
+sudo rm -rf /var/lib/jenkins/.config/containers
+
+# Reset subuid/subgid
+sudo sed -i '/^jenkins:/d' /etc/subuid
+sudo sed -i '/^jenkins:/d' /etc/subgid
+
+# Add fresh entries
+echo "jenkins:165536:65536" | sudo tee -a /etc/subuid
+echo "jenkins:165536:65536" | sudo tee -a /etc/subgid
+
+# Verify
+echo "=== SubUID ==="
+grep jenkins /etc/subuid
+echo "=== SubGID ==="
+grep jenkins /etc/subgid
+
+# Reset Podman
+sudo -u jenkins podman system reset -f
+sudo -u jenkins podman system migrate
+
+# Configure registries
+sudo mkdir -p /var/lib/jenkins/.config/containers
+sudo tee /var/lib/jenkins/.config/containers/registries.conf << EOF
+[[registry]]
+location = "localhost:5000"
+insecure = true
+EOF
+
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.config
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+
+echo "✅ Reset complete! Test with: sudo -u jenkins podman ps"
+```
+
+### Solution 5: Switch to Docker (EASIEST - TERMINAL FIX)
+
+**If Podman continues to have issues, Docker is simpler:**
+
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Add jenkins to docker group
+sudo usermod -aG docker jenkins
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+
+# Update Jenkinsfile: Replace all "podman" with "docker"
+# Use find/replace in Jenkinsfile
+```
+
+### Solution 6: Fix in Jenkinsfile (Use rootful with sudo)
+
+**Update Jenkinsfile to use sudo podman:**
+
+```groovy
+environment {
+    PODMAN = 'sudo /usr/bin/podman'
+    REGISTRY = 'localhost:5000'
+    IMAGE_NAME = 'news-credibility-analyzer'
+    // ... rest
+}
+```
+
+**Then in all stages, use:**
+```groovy
+sh """
+    ${PODMAN} build -t ${IMAGE_NAME}:${APP_VERSION} .
+    ${PODMAN} tag ${IMAGE_NAME}:${APP_VERSION} ${IMAGE_NAME}:latest
+    ${PODMAN} push ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
+    ${PODMAN} run -d --name ${IMAGE_NAME} -p 5000:5000 ${IMAGE_NAME}:${APP_VERSION}
+"""
+```
+
+**Make sure sudo is passwordless:**
+```bash
+echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/podman" | sudo tee /etc/sudoers.d/jenkins-podman
+```
+
+---
+
 ## Error: python: not found
 
 ### Solution 1: Use python3 instead of python
@@ -103,6 +485,82 @@ sudo -u jenkins /usr/bin/podman --version
 
 # If fails, add jenkins to podman group
 sudo usermod -aG podman jenkins
+sudo systemctl restart jenkins
+```
+
+---
+
+## Error: insufficient UIDs or GIDs available / processing tar file error
+
+### This is the same as subuid/subgid issue above
+
+### Quick Fix (TERMINAL):
+
+```bash
+# Add subuid/subgid for jenkins
+echo "jenkins:100000:65536" | sudo tee -a /etc/subuid
+echo "jenkins:100000:65536" | sudo tee -a /etc/subgid
+
+# Migrate Podman
+sudo -u jenkins podman system migrate
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### Alternative: Use rootful Podman
+
+```bash
+# Enable rootful socket
+sudo systemctl enable --now podman.socket
+
+# Add jenkins to podman group
+sudo usermod -aG podman jenkins
+
+# Allow passwordless sudo (if needed)
+echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/podman" | sudo tee /etc/sudoers.d/jenkins-podman
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+---
+
+## Error: usermod: group 'podman' does not exist
+
+### Solution: Create podman group (TERMINAL FIX)
+
+```bash
+# Create podman group
+sudo groupadd podman
+
+# Verify it was created
+getent group podman
+
+# Add jenkins to podman group
+sudo usermod -aG podman jenkins
+
+# Verify jenkins is in the group
+groups jenkins | grep podman
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### Alternative: Use sudo without group
+
+**If podman group doesn't work, just use sudo:**
+
+```bash
+# Configure passwordless sudo for podman
+echo "jenkins ALL=(ALL) NOPASSWD: /usr/bin/podman" | sudo tee /etc/sudoers.d/jenkins-podman
+
+# Verify
+sudo visudo -c
+
+# Update Jenkinsfile: PODMAN = 'sudo /usr/bin/podman'
+
+# Restart Jenkins
 sudo systemctl restart jenkins
 ```
 

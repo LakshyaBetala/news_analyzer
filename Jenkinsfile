@@ -9,6 +9,9 @@ pipeline {
         GIT_COMMIT_SHORT = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : 'local'}"
         APP_VERSION = "${env.BUILD_NUMBER}.${GIT_COMMIT_SHORT}"
         DEPLOYMENT_LOG = 'deployment_history.log'
+        // Use sudo podman for rootful mode (if rootless has issues)
+        PODMAN = 'sudo /usr/bin/podman'  // Using rootful Podman with sudo
+        // PODMAN = '/usr/bin/podman'  // Use rootless Podman (requires subuid/subgid config)
     }
     
     stages {
@@ -58,8 +61,8 @@ pipeline {
                 script {
                     echo "Building Podman image..."
                     sh """
-                        podman build -t ${IMAGE_NAME}:${APP_VERSION} .
-                        podman tag ${IMAGE_NAME}:${APP_VERSION} ${IMAGE_NAME}:latest
+                        ${PODMAN} build -t ${IMAGE_NAME}:${APP_VERSION} .
+                        ${PODMAN} tag ${IMAGE_NAME}:${APP_VERSION} ${IMAGE_NAME}:latest
                     """
                 }
             }
@@ -70,8 +73,8 @@ pipeline {
                 script {
                     echo "Tagging image for registry..."
                     sh """
-                        podman tag ${IMAGE_NAME}:${APP_VERSION} ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
-                        podman tag ${IMAGE_NAME}:latest ${REGISTRY}/${IMAGE_NAME}:latest
+                        ${PODMAN} tag ${IMAGE_NAME}:${APP_VERSION} ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
+                        ${PODMAN} tag ${IMAGE_NAME}:latest ${REGISTRY}/${IMAGE_NAME}:latest
                     """
                 }
             }
@@ -86,8 +89,8 @@ pipeline {
                     if (REGISTRY.contains('localhost') || REGISTRY.contains('127.0.0.1')) {
                         // Local registry - no authentication needed
                         sh """
-                            podman push ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
-                            podman push ${REGISTRY}/${IMAGE_NAME}:latest
+                            ${PODMAN} push ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION} || echo "Push failed, continuing..."
+                            ${PODMAN} push ${REGISTRY}/${IMAGE_NAME}:latest || echo "Push failed, continuing..."
                         """
                     } else {
                         // Remote registry - use credentials
@@ -97,9 +100,9 @@ pipeline {
                             passwordVariable: 'REGISTRY_PASS'
                         )]) {
                             sh """
-                                echo \$REGISTRY_PASS | podman login ${REGISTRY} -u \$REGISTRY_USER --password-stdin
-                                podman push ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
-                                podman push ${REGISTRY}/${IMAGE_NAME}:latest
+                                echo \$REGISTRY_PASS | ${PODMAN} login ${REGISTRY} -u \$REGISTRY_USER --password-stdin
+                                ${PODMAN} push ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
+                                ${PODMAN} push ${REGISTRY}/${IMAGE_NAME}:latest
                             """
                         }
                     }
@@ -113,19 +116,19 @@ pipeline {
                     echo "Deploying application..."
                     sh """
                         # Stop existing container if running
-                        podman stop ${IMAGE_NAME} || true
-                        podman rm ${IMAGE_NAME} || true
+                        ${PODMAN} stop ${IMAGE_NAME} || true
+                        ${PODMAN} rm ${IMAGE_NAME} || true
                         
                         # Run new container
                         # Use registry image if available, otherwise use local image
-                        if podman image exists ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}; then
-                            podman run -d \\
+                        if ${PODMAN} image exists ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION} 2>/dev/null; then
+                            ${PODMAN} run -d \\
                                 --name ${IMAGE_NAME} \\
                                 -p 5000:5000 \\
                                 -e APP_VERSION=${APP_VERSION} \\
                                 ${REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
                         else
-                            podman run -d \\
+                            ${PODMAN} run -d \\
                                 --name ${IMAGE_NAME} \\
                                 -p 5000:5000 \\
                                 -e APP_VERSION=${APP_VERSION} \\
@@ -170,7 +173,7 @@ pipeline {
             echo "Cleaning up..."
             // Optional: Clean up old images
             sh """
-                podman image prune -f || true
+                ${PODMAN} image prune -f || true
             """
         }
     }
