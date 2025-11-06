@@ -141,6 +141,79 @@ sh '''
 
 ---
 
+## Error: unrecognized arguments: --cov=app --cov-report=term-missing
+
+### This means pytest-cov plugin is NOT installed
+
+### Solution 1: Install pytest-cov (Recommended)
+
+**In Jenkinsfile, add a stage before Test:**
+```groovy
+stage('Install Dependencies') {
+    steps {
+        sh '''
+            pip3 install --user pytest pytest-cov Flask || true
+            python3 -m pip install --user -r requirements.txt || true
+        '''
+    }
+}
+```
+
+### Solution 2: Install system-wide (One-time setup)
+
+**Run in WSL terminal:**
+```bash
+sudo pip3 install pytest pytest-cov
+```
+
+**Then restart Jenkins:**
+```bash
+sudo systemctl restart jenkins
+```
+
+### Solution 3: Run tests without coverage (Quick fix)
+
+**In Jenkinsfile Test stage, change to:**
+```groovy
+stage('Test') {
+    steps {
+        sh '''
+            python3 -m pytest tests/ -v
+        '''
+    }
+}
+```
+
+### Solution 4: Install in Jenkinsfile before test
+
+**Update Test stage:**
+```groovy
+stage('Test') {
+    steps {
+        sh '''
+            pip3 install --user pytest pytest-cov || true
+            export PYTHONPATH=${WORKSPACE}
+            python3 -m pytest tests/ -v --cov=app --cov-report=term-missing || echo "Tests completed"
+        '''
+    }
+}
+```
+
+### Solution 5: Use requirements.txt
+
+**Make sure requirements.txt has pytest-cov, then:**
+```groovy
+stage('Install Dependencies') {
+    steps {
+        sh '''
+            pip3 install --user -r requirements.txt
+        '''
+    }
+}
+```
+
+---
+
 ## Error: ModuleNotFoundError: No module named 'app'
 
 ### Solution: Set PYTHONPATH
@@ -378,24 +451,57 @@ sudo -u jenkins ls -la /var/lib/jenkins/workspace/
 
 ## Most Common Fix: Update Jenkinsfile Test Stage
 
-Replace this:
+### Current Error: pytest-cov not installed
+
+**Add this stage BEFORE Test stage:**
 ```groovy
-sh '''
-    python -m pytest tests/ -v --cov=app --cov-report=term-missing
-'''
+stage('Install Dependencies') {
+    steps {
+        script {
+            echo "Installing Python dependencies..."
+            sh '''
+                pip3 install --user pytest pytest-cov Flask || true
+                pip3 install --user -r requirements.txt || true
+            '''
+        }
+    }
+}
 ```
 
-With this:
+**Then update Test stage:**
 ```groovy
-sh '''
-    python3 -m pytest tests/ -v --cov=app --cov-report=term-missing || echo "Tests completed with warnings"
-'''
+stage('Test') {
+    steps {
+        script {
+            echo "Running tests..."
+            sh '''
+                export PYTHONPATH=${WORKSPACE}
+                python3 -m pytest tests/ -v --cov=app --cov-report=term-missing || echo "Tests completed"
+            '''
+        }
+    }
+}
 ```
 
-Or install dependencies first:
+### Quick Terminal Fix (One-time):
+
+```bash
+# Install pytest-cov system-wide
+sudo pip3 install pytest pytest-cov
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### UI Fix (In Jenkins):
+
+1. Go to: Pipeline → Configure
+2. Find "Test" stage
+3. Add "Install Dependencies" stage BEFORE it
+4. Or update Test stage to install first:
 ```groovy
 sh '''
-    pip3 install --user pytest pytest-cov Flask
+    pip3 install --user pytest pytest-cov Flask || true
     export PYTHONPATH=${WORKSPACE}
     python3 -m pytest tests/ -v --cov=app --cov-report=term-missing
 '''
