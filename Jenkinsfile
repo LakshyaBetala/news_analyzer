@@ -5,7 +5,9 @@ pipeline {
         // Registry configuration - adjust for your setup
         REGISTRY = 'localhost:5000'  // Local registry or change to your registry
         IMAGE_NAME = 'news-credibility-analyzer'
-        APP_VERSION = "${env.BUILD_NUMBER}.${env.GIT_COMMIT.take(7)}"
+        // Handle Git commit - use BUILD_NUMBER if Git not available
+        GIT_COMMIT_SHORT = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : 'local'}"
+        APP_VERSION = "${env.BUILD_NUMBER}.${GIT_COMMIT_SHORT}"
         DEPLOYMENT_LOG = 'deployment_history.log'
     }
     
@@ -14,7 +16,14 @@ pipeline {
             steps {
                 script {
                     echo "Checking out code..."
-                    checkout scm
+                    try {
+                        checkout scm
+                        echo "Git checkout successful"
+                    } catch (Exception e) {
+                        echo "Git checkout failed or not configured, using workspace directly"
+                        echo "Error: ${e.getMessage()}"
+                        sh 'pwd && ls -la'
+                    }
                 }
             }
         }
@@ -124,7 +133,7 @@ pipeline {
                 script {
                     echo "Logging deployment..."
                     sh """
-                        echo "\$(date -u +'%Y-%m-%d %H:%M:%S UTC') | Version: ${APP_VERSION} | Build: ${env.BUILD_NUMBER} | Commit: ${env.GIT_COMMIT.take(7)} | Status: SUCCESS" >> ${DEPLOYMENT_LOG}
+                        echo "\$(date -u +'%Y-%m-%d %H:%M:%S UTC') | Version: ${APP_VERSION} | Build: ${env.BUILD_NUMBER} | Commit: ${GIT_COMMIT_SHORT} | Status: SUCCESS" >> ${DEPLOYMENT_LOG}
                     """
                 }
             }
@@ -140,7 +149,7 @@ pipeline {
         failure {
             echo "Pipeline failed!"
             sh """
-                echo "\$(date -u +'%Y-%m-%d %H:%M:%S UTC') | Version: ${APP_VERSION} | Build: ${env.BUILD_NUMBER} | Commit: ${env.GIT_COMMIT.take(7)} | Status: FAILED" >> ${DEPLOYMENT_LOG}
+                echo "\$(date -u +'%Y-%m-%d %H:%M:%S UTC') | Version: ${APP_VERSION} | Build: ${env.BUILD_NUMBER} | Commit: ${GIT_COMMIT_SHORT} | Status: FAILED" >> ${DEPLOYMENT_LOG}
             """
         }
         always {
