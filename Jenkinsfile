@@ -29,12 +29,12 @@ pipeline {
         }
         
         stage('Test') {
-            steps {
-                script {
-                    echo "Running tests..."
-                    sh '''
-                        python -m pytest tests/ -v --cov=app --cov-report=term-missing
-                    '''
+        steps {
+            script {
+                echo "Running tests..."
+                sh '''
+                python3 -m pytest tests/ -v --cov=app --cov-report=term-missing
+                '''
                 }
             }
         }
