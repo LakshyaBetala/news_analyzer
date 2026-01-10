@@ -1,0 +1,58 @@
+# k8s/deployment.yaml
+
+# 1. The Deployment (Manages the Pods/Containers)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-analyzer
+spec:
+  replicas: 2  # Run 2 copies. If one crashes, the other handles traffic.
+  selector:
+    matchLabels:
+      app: news-analyzer
+  template:
+    metadata:
+      labels:
+        app: news-analyzer
+      # MLOps Magic: These annotations tell Prometheus "Scrape me!"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: news-analyzer
+        image: news-analyzer:latest  # Ensure this matches your build tag
+        imagePullPolicy: IfNotPresent # Uses local image if available (good for Minikube)
+        ports:
+        - containerPort: 8000
+        # Resource Limits (Crucial for MLOps cost control)
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        # Liveness Probe: Kills the pod if it freezes
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+
+---
+# 2. The Service (Exposes the App to the World)
+apiVersion: v1
+kind: Service
+metadata:
+  name: news-analyzer-service
+spec:
+  type: LoadBalancer 
+  selector:
+    app: news-analyzer
+  ports:
+    - protocol: TCP
+      port: 80        # The world sees port 80
+      targetPort: 8000 # We forward to container port 8000  

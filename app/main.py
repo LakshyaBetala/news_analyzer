@@ -1,90 +1,103 @@
 import os
 import sys
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+
+# 1. Import FastAPI tools
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from prometheus_fastapi_instrumentator import Instrumentator
 
-# Handle imports for both local execution and Docker
+# Handle imports (same as before)
 try:
     from .model import NewsCredibilityAnalyzer
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from app.model import NewsCredibilityAnalyzer
 
-# Initialize App
+# 2. Initialize the App
 app = FastAPI(
     title="News Credibility Analyzer",
-    description="Real-time news credibility analysis with MLOps monitoring",
+    description="A real-time ML service to score news credibility.",
     version=os.getenv('APP_VERSION', '1.0.0')
 )
 
-# --- MLOPS MAGIC STARTS HERE ---
-# This line automatically tracks every request and exposes data at /metrics
-# Prometheus will scrape this endpoint to build your Grafana dashboards.
+# 3. Setup Monitoring (Prometheus)
+# This automatically creates a /metrics endpoint that Prometheus will scrape later
 Instrumentator().instrument(app).expose(app)
-# -------------------------------
 
-# Initialize Model
+# Initialize your ML Logic
 analyzer = NewsCredibilityAnalyzer()
-templates = Jinja2Templates(directory="app/templates")
+VERSION = os.getenv('APP_VERSION', '1.0.0')
 
-# Define Data Model (Replaces manual JSON parsing)
+# 4. Define the Data "Schema" (Pydantic)
+# This is the "Contract". The user MUST send data looking like this.
 class NewsRequest(BaseModel):
-    title: str = ""
-    content: str = ""
-    source: str = ""
+    title: str
+    content: str
+    source: str = ""  # Optional, defaults to empty string
+
+    # Example for the auto-generated docs
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "Aliens Land in Times Square",
+                "content": "Scientists confirm UFO sighting in New York...",
+                "source": "Galaxy News"
+            }
+        }
+
+# 5. Define the Response "Schema" (Optional but good practice)
+class AnalysisResponse(BaseModel):
+    credibility_score: float
+    risk_factors: list[str]
+    recommendations: list[str]
+    timestamp: str
+    version: str
+
+# --- ROUTES ---
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Main dashboard page."""
-    return templates.TemplateResponse(
-        "dashboard.html", 
-        {"request": request, "version": app.version}
-    )
+async def read_root(request: Request):
+    """Serves the dashboard (if you still want the UI)."""
+    # Note: For a pure API, we usually don't serve HTML, 
+    # but we keep this for your project continuity.
+    templates = Jinja2Templates(directory="app/templates")
+    return templates.TemplateResponse("dashboard.html", {"request": request, "version": VERSION})
 
-@app.post("/api/analyze")
+@app.post("/api/analyze", response_model=AnalysisResponse)
 async def analyze_news(request: NewsRequest):
     """
-    Analyze news article for credibility.
-    FastAPI automatically validates the JSON against NewsRequest model.
+    Analyzes a news article.
+    FastAPI automatically validates that 'request' matches 'NewsRequest'.
     """
-    if not request.title and not request.content:
-        raise HTTPException(status_code=400, detail="Title or content is required")
-    
     try:
-        # Run analysis
+        # We access data directly like an object: request.title
         result = analyzer.analyze(request.title, request.content, request.source)
         
-        # Add MLOps metadata
+        # Add metadata
         result['timestamp'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-        result['version'] = app.version
+        result['version'] = VERSION
         
         return result
+    
     except Exception as e:
+        # In FastAPI, we raise HTTP exceptions instead of returning JSON manually
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health")
-async def health():
-    """Health check endpoint for Kubernetes."""
+async def health_check():
+    """Simple health check for Kubernetes/Docker."""
     return {
         "status": "healthy",
-        "version": app.version,
+        "version": VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
     }
 
 @app.get("/api/version")
-async def version():
-    return {
-        "version": app.version,
-        "service": "news-credibility-analyzer"
-    }
+async def get_version():
+    return {"version": VERSION, "service": "news-credibility-analyzer"}
 
-# Entry point for debugging
-if __name__ == '__main__':
-    import uvicorn
-    port = int(os.getenv('PORT', 5000))
-    # Uvicorn is the server that runs FastAPI
-    uvicorn.run(app, host='0.0.0.0', port=port)
+# To run locally: uvicorn app.main:app --reload

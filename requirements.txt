@@ -1,11 +1,18 @@
-fastapi
-uvicorn
+# Web Framework (Keep these versions or higher)
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# Monitoring
+prometheus-fastapi-instrumentator>=6.1.0
+
+# ML & Data (REMOVE SPECIFIC VERSIONS to support Python 3.14)
 transformers
 torch
-requests
-beautifulsoup4
-pytest
-httpx
-prometheus-fastapi-instrumentator
-jinja2
-python-multipart
+requests>=2.31.0
+beautifulsoup4>=4.12.2
+jinja2>=3.1.2
+
+# Testing
+pytest>=7.4.3
+httpx>=0.26.0
