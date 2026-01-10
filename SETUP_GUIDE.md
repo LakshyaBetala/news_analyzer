@@ -8,7 +8,35 @@
 - Jenkins (for CI/CD) - optional
 - Git installed in WSL
 
-## WSL Setup (If Not Already Done)
+## WSL Setup 
+```bash
+NAME=news-credibility-analyzer
+IMAGE=localhost:5000/news-credibility-analyzer:15.f68e372
+PORT=5000
+
+sudo podman stop "$NAME" || true
+sudo podman rm "$NAME" || true
+command -v fuser >/dev/null && sudo fuser -k ${PORT}/tcp || true
+sleep 2
+
+sudo podman run -d --name "$NAME" --replace -p ${PORT}:5000 \
+  -e APP_VERSION=15.f68e372 \
+  "$IMAGE"
+
+# wait up to ~30s
+for i in {1..15}; do
+  if curl -sf "http://127.0.0.1:${PORT}/api/health" >/dev/null; then
+    echo "Healthy ✅"
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "Health check failed ❌ — recent logs:"
+sudo podman logs --tail=200 "$NAME" || true
+exit 1
+
+```
 
 ### Check WSL Installation
 ```bash
@@ -589,4 +617,5 @@ podman rm registry
 - Set up monitoring and logging
 - Use orchestration (Kubernetes, Podman Compose)
 - Enable HTTPS/TLS
+
 
