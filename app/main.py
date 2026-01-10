@@ -1,128 +1,90 @@
-    """
-    News Credibility Analyzer - Main Application
-    Real-time news credibility analysis using keyword-based scoring.
-    Designed to be extensible with transformer models.
-    """
+import os
+import sys
+from datetime import datetime, timezone
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+from prometheus_fastapi_instrumentator import Instrumentator
 
-    from flask import Flask, render_template, request, jsonify
-    from datetime import datetime, timezone
-    import os
-    import sys
+# Handle imports for both local execution and Docker
+try:
+    from .model import NewsCredibilityAnalyzer
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from app.model import NewsCredibilityAnalyzer
 
-    # Handle both relative and absolute imports
+# Initialize App
+app = FastAPI(
+    title="News Credibility Analyzer",
+    description="Real-time news credibility analysis with MLOps monitoring",
+    version=os.getenv('APP_VERSION', '1.0.0')
+)
+
+# --- MLOPS MAGIC STARTS HERE ---
+# This line automatically tracks every request and exposes data at /metrics
+# Prometheus will scrape this endpoint to build your Grafana dashboards.
+Instrumentator().instrument(app).expose(app)
+# -------------------------------
+
+# Initialize Model
+analyzer = NewsCredibilityAnalyzer()
+templates = Jinja2Templates(directory="app/templates")
+
+# Define Data Model (Replaces manual JSON parsing)
+class NewsRequest(BaseModel):
+    title: str = ""
+    content: str = ""
+    source: str = ""
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    """Main dashboard page."""
+    return templates.TemplateResponse(
+        "dashboard.html", 
+        {"request": request, "version": app.version}
+    )
+
+@app.post("/api/analyze")
+async def analyze_news(request: NewsRequest):
+    """
+    Analyze news article for credibility.
+    FastAPI automatically validates the JSON against NewsRequest model.
+    """
+    if not request.title and not request.content:
+        raise HTTPException(status_code=400, detail="Title or content is required")
+    
     try:
-        from .model import NewsCredibilityAnalyzer
-    except ImportError:
-        # Fallback for direct execution (python app/main.py)
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from app.model import NewsCredibilityAnalyzer
-
-    app = Flask(__name__)
-    app.config['JSON_SORT_KEYS'] = False
-
-    # Initialize analyzer
-    analyzer = NewsCredibilityAnalyzer()
-
-    # Version from environment or default
-    VERSION = os.getenv('APP_VERSION', '1.0.0')
-
-
-    @app.route('/')
-    def index():
-        """Main dashboard page."""
-        return render_template('dashboard.html', version=VERSION)
-
-
-    @app.route('/api/analyze', methods=['POST'])
-    def analyze_news():
-        """
-        Analyze news article for credibility.
+        # Run analysis
+        result = analyzer.analyze(request.title, request.content, request.source)
         
-        Expected JSON payload:
-        {
-            "title": "Article title",
-            "content": "Article content",
-            "source": "Source name (optional)"
-        }
+        # Add MLOps metadata
+        result['timestamp'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        result['version'] = app.version
         
-        Returns:
-        {
-            "credibility_score": float (0-100),
-            "risk_factors": list,
-            "recommendations": list,
-            "timestamp": ISO datetime,
-            "version": str
-        }
-        """
-        try:
-            # Try to get JSON data
-            # If Content-Type is not application/json, force=True will try to parse anyway
-            data = request.get_json(force=True, silent=True)
-            
-            # If data is None, it means JSON parsing failed or no data was sent
-            if data is None:
-                # Check if there's any data in the request
-                if request.data:
-                    # There's data but it's not valid JSON
-                    return jsonify({
-                        'error': 'Invalid JSON format',
-                        'version': VERSION
-                    }), 400
-                else:
-                    # No data at all
-                    return jsonify({
-                        'error': 'No JSON data provided',
-                        'version': VERSION
-                    }), 400
-            
-            title = data.get('title', '')
-            content = data.get('content', '')
-            source = data.get('source', '')
-            
-            if not title and not content:
-                return jsonify({
-                    'error': 'Title or content is required',
-                    'version': VERSION
-                }), 400
-            
-            # Analyze credibility
-            result = analyzer.analyze(title, content, source)
-            
-            # Add metadata
-            result['timestamp'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-            result['version'] = VERSION
-            
-            return jsonify(result), 200
-            
-        except Exception as e:
-            # Other errors
-            return jsonify({
-                'error': str(e),
-                'version': VERSION
-            }), 500
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/health")
+async def health():
+    """Health check endpoint for Kubernetes."""
+    return {
+        "status": "healthy",
+        "version": app.version,
+        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+    }
 
-    @app.route('/api/health', methods=['GET'])
-    def health():
-        """Health check endpoint."""
-        return jsonify({
-            'status': 'healthy',
-            'version': VERSION,
-            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-        }), 200
+@app.get("/api/version")
+async def version():
+    return {
+        "version": app.version,
+        "service": "news-credibility-analyzer"
+    }
 
-
-    @app.route('/api/version', methods=['GET'])
-    def version():
-        """Version endpoint."""
-        return jsonify({
-            'version': VERSION,
-            'service': 'news-credibility-analyzer'
-        }), 200
-
-
-    if __name__ == '__main__':
-        port = int(os.getenv('PORT', 5000))
-        debug = os.getenv('DEBUG', 'False').lower() == 'true'
-        app.run(host='0.0.0.0', port=port, debug=debug)
-
+# Entry point for debugging
+if __name__ == '__main__':
+    import uvicorn
+    port = int(os.getenv('PORT', 5000))
+    # Uvicorn is the server that runs FastAPI
+    uvicorn.run(app, host='0.0.0.0', port=port)

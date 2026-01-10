@@ -8,14 +8,4 @@ pytest
 httpx
 prometheus-fastapi-instrumentator
 jinja2
-python-multipartfastapi
-uvicorn
-transformers
-torch
-requests
-beautifulsoup4
-pytest
-httpx
-prometheus-fastapi-instrumentator
-jinja2
 python-multipart
