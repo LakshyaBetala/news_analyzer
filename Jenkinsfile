@@ -6,7 +6,6 @@
 pipeline {
     agent any
 
-    options { timestamps() }
     triggers { pollSCM('* * * * *') }   // push to GitHub -> build starts within a minute, no webhook needed
 
     parameters {
