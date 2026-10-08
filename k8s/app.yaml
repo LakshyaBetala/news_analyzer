@@ -1,0 +1,62 @@
+# __IMAGE__, __VERSION__, __BUCKET__, __REGION__ and __S3_ENDPOINT__ (empty on real AWS) are substituted by the Jenkins deploy stage.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-analyzer
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: news-analyzer
+  template:
+    metadata:
+      labels:
+        app: news-analyzer
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: news-analyzer
+          image: __IMAGE__
+          imagePullPolicy: IfNotPresent   # image is loaded into k3s by the pipeline, not pulled
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_VERSION
+              value: "__VERSION__"
+            - name: S3_BUCKET
+              value: "__BUCKET__"
+            - name: S3_ENDPOINT_URL
+              value: "__S3_ENDPOINT__"
+            - name: AWS_DEFAULT_REGION
+              value: "__REGION__"
+          resources:
+            requests: { memory: "128Mi", cpu: "100m" }
+            limits: { memory: "256Mi", cpu: "400m" }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 8000 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /api/health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: news-analyzer-service
+spec:
+  type: LoadBalancer      # k3s' built-in ServiceLB exposes this on the EC2 host's port 80
+  selector:
+    app: news-analyzer
+  ports:
+    - port: 80
+      targetPort: 8000

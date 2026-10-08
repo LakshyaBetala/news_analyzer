@@ -1,0 +1,42 @@
+# The whole "cloud" on your laptop:
+#   localstack -> stands in for AWS (S3, IAM, CloudWatch), free, no account
+#   k3s        -> Kubernetes cluster (stands in for the EC2 instance)
+#   jenkins    -> the CD pipeline (pre-configured, job already created)
+# Start: docker compose up -d --build     Jenkins: http://localhost:8080 (admin / admin)
+services:
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: cloudforge-localstack
+    environment:
+      SERVICES: s3,iam,cloudwatch,logs,sts
+    ports:
+      - "4566:4566"
+
+  k3s:
+    image: rancher/k3s:v1.30.4-k3s1
+    container_name: cloudforge-k3s
+    command: server --disable traefik --write-kubeconfig-mode 644
+    privileged: true
+    tmpfs:
+      - /run
+      - /var/run
+    ports:
+      - "8081:80"   # the deployed app: http://localhost:8081
+
+  jenkins:
+    build: ./jenkins
+    container_name: cloudforge-jenkins
+    ports:
+      - "8080:8080"
+    environment:
+      CASC_JENKINS_CONFIG: /casc/jenkins.yaml
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./jenkins/casc.yaml:/casc/jenkins.yaml:ro
+    depends_on:
+      - localstack
+      - k3s
+
+volumes:
+  jenkins_home:

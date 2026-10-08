@@ -1,116 +1,81 @@
-"""
-Tests for News Credibility Analyzer API
-"""
+"""Tests for the News Credibility Analyzer API."""
+
+import json
 
 import pytest
-import json
+from fastapi.testclient import TestClient
+
 from app.main import app
 
 
 @pytest.fixture
 def client():
-    """Create test client."""
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+    return TestClient(app)
 
 
-def test_health_endpoint(client):
-    """Test health check endpoint."""
-    response = client.get('/api/health')
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data['status'] == 'healthy'
-    assert 'version' in data
+GOOD = {
+    "title": "Central bank holds rates",
+    "content": "According to an official statement, the verified data and published analysis "
+               "confirmed the findings of the research report. Experts cited the evidence.",
+    "source": "Reuters",
+}
+BAD = {
+    "title": "SHOCKING secret miracle cure!!!",
+    "content": "You won't believe this one weird trick doctors hate. Guaranteed, act now!!!",
+    "source": "unknown",
+}
 
 
-def test_version_endpoint(client):
-    """Test version endpoint."""
-    response = client.get('/api/version')
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'version' in data
-    assert data['service'] == 'news-credibility-analyzer'
+def test_health(client):
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json()["status"] == "healthy"
 
 
-def test_analyze_missing_data(client):
-    """Test analyze endpoint with missing data."""
-    response = client.post('/api/analyze', json={})
-    assert response.status_code == 400
-    data = json.loads(response.data)
-    assert 'error' in data
+def test_version(client):
+    r = client.get("/api/version")
+    assert r.status_code == 200
+    assert r.json()["service"] == "news-credibility-analyzer"
 
 
-def test_analyze_valid_article(client):
-    """Test analyze endpoint with valid article."""
-    payload = {
-        'title': 'Research Study Confirms Climate Change Impact',
-        'content': 'A peer-reviewed study published in a scientific journal provides evidence of climate change.',
-        'source': 'Reuters'
-    }
-    response = client.post('/api/analyze', json=payload)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    
-    assert 'credibility_score' in data
-    assert 0 <= data['credibility_score'] <= 100
-    assert 'risk_factors' in data
-    assert isinstance(data['risk_factors'], list)
-    assert 'recommendations' in data
-    assert isinstance(data['recommendations'], list)
-    assert 'timestamp' in data
-    assert 'version' in data
+def test_analyze_credible_scores_higher_than_suspicious(client):
+    good = client.post("/api/analyze", json=GOOD).json()
+    bad = client.post("/api/analyze", json=BAD).json()
+    assert good["credibility_score"] >= 60
+    assert bad["credibility_score"] < 40
+    assert good["credibility_score"] > bad["credibility_score"]
 
 
-def test_analyze_suspicious_article(client):
-    """Test analyze endpoint with suspicious article."""
-    payload = {
-        'title': 'SHOCKING SECRET Doctors Don\'t Want You to Know!',
-        'content': 'You won\'t believe this one weird trick! Act now!',
-        'source': 'Unknown'
-    }
-    response = client.post('/api/analyze', json=payload)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    
-    # Suspicious article should have lower score
-    assert data['credibility_score'] < 50
-    assert len(data['risk_factors']) > 0
+def test_analyze_response_shape(client):
+    data = client.post("/api/analyze", json=GOOD).json()
+    for key in ("credibility_score", "risk_factors", "recommendations", "timestamp", "version"):
+        assert key in data
 
 
-def test_analyze_title_only(client):
-    """Test analyze endpoint with title only."""
-    payload = {
-        'title': 'Breaking News: Official Statement Released',
-        'content': ''
-    }
-    response = client.post('/api/analyze', json=payload)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'credibility_score' in data
+def test_analyze_missing_fields_is_422(client):
+    assert client.post("/api/analyze", json={}).status_code == 422
 
 
-def test_analyze_content_only(client):
-    """Test analyze endpoint with content only."""
-    payload = {
-        'title': '',
-        'content': 'This is a verified news article with confirmed facts.'
-    }
-    response = client.post('/api/analyze', json=payload)
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'credibility_score' in data
+def test_dashboard_and_releases_pages(client):
+    assert client.get("/").status_code == 200
+    assert client.get("/releases").status_code == 200
 
 
-def test_analyze_no_json(client):
-    """Test analyze endpoint without JSON."""
-    response = client.post('/api/analyze', data='not json')
-    assert response.status_code == 400
+def test_releases_api_reads_local_file(client, tmp_path, monkeypatch):
+    f = tmp_path / "releases.json"
+    f.write_text(json.dumps([{"version": "1.abc", "status": "PROMOTED"}]))
+    monkeypatch.delenv("S3_BUCKET", raising=False)
+    monkeypatch.setenv("RELEASES_FILE", str(f))
+    r = client.get("/api/releases")
+    assert r.status_code == 200
+    assert r.json()[0]["version"] == "1.abc"
 
 
-def test_index_page(client):
-    """Test index page loads."""
-    response = client.get('/')
-    assert response.status_code == 200
-    assert b'News Credibility Analyzer' in response.data
+def test_releases_api_empty_when_nothing_recorded(client, tmp_path, monkeypatch):
+    monkeypatch.delenv("S3_BUCKET", raising=False)
+    monkeypatch.setenv("RELEASES_FILE", str(tmp_path / "missing.json"))
+    assert client.get("/api/releases").json() == []
 
+
+def test_metrics_exposed(client):
+    assert client.get("/metrics").status_code == 200

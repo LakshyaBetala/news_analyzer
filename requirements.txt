@@ -1,17 +1,8 @@
-# Web Framework (Keep these versions or higher)
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
-python-multipart>=0.0.6
-
-# Monitoring
-prometheus-fastapi-instrumentator>=6.1.0
-
-# ML & Data (REMOVE SPECIFIC VERSIONS to support Python 3.14)
-transformers
-torch
-requests>=2.31.0
-beautifulsoup4>=4.12.2
 jinja2>=3.1.2
+prometheus-fastapi-instrumentator>=6.1.0
+boto3>=1.34.0
 
 # Testing
 pytest>=7.4.3

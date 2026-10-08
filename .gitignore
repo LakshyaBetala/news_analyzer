@@ -36,3 +36,13 @@ htmlcov/
 .idea/
 *.iml
 
+
+# CloudForge
+releases.json
+eval_result.json
+smoke.json
+.terraform/
+*.tfstate*
+.terraform.lock.hcl
+infra/tfplan
+jenkins/cloudforge.pub

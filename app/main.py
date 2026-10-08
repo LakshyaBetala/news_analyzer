@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from datetime import datetime, timezone
@@ -54,6 +55,7 @@ class AnalysisResponse(BaseModel):
     credibility_score: float
     risk_factors: list[str]
     recommendations: list[str]
+    analysis_details: dict = {}
     timestamp: str
     version: str
 
@@ -65,7 +67,7 @@ async def read_root(request: Request):
     # Note: For a pure API, we usually don't serve HTML, 
     # but we keep this for your project continuity.
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse("dashboard.html", {"request": request, "version": VERSION})
+    return templates.TemplateResponse(request, "dashboard.html", {"version": VERSION})
 
 @app.post("/api/analyze", response_model=AnalysisResponse)
 async def analyze_news(request: NewsRequest):
@@ -95,6 +97,36 @@ async def health_check():
         "version": VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
     }
+
+def _load_releases() -> list:
+    """Release history written by the Jenkins pipeline: S3 (S3_BUCKET) or a local file."""
+    bucket = os.getenv("S3_BUCKET")
+    try:
+        if bucket:
+            import boto3
+            endpoint = os.getenv("S3_ENDPOINT_URL")  # set only when running against LocalStack
+            extra = {"endpoint_url": endpoint, "aws_access_key_id": "test", "aws_secret_access_key": "test"} if endpoint else {}
+            body = boto3.client("s3", **extra).get_object(Bucket=bucket, Key="releases.json")["Body"].read()
+            return json.loads(body)
+        path = os.getenv("RELEASES_FILE", "releases.json")
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass  # no history yet (or S3 unreachable): show an empty control room
+    return []
+
+
+@app.get("/api/releases")
+async def get_releases():
+    return _load_releases()
+
+
+@app.get("/releases", response_class=HTMLResponse)
+async def releases_page(request: Request):
+    templates = Jinja2Templates(directory="app/templates")
+    return templates.TemplateResponse(request, "releases.html", {"version": VERSION})
+
 
 @app.get("/api/version")
 async def get_version():
