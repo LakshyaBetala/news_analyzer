@@ -145,7 +145,7 @@ pipeline {
                             aws s3 cp releases.json s3://$BUCKET/releases.json
                             if [ -f eval_result.json ]; then
                                 ACC=$(python -c "import json;print(round(json.load(open('eval_result.json'))['accuracy']*100,1))")
-                                aws cloudwatch put-metric-data --namespace CloudForge --metric-name AccuracyPercent --value $ACC
+                                aws cloudwatch put-metric-data --namespace CloudForge --metric-name AccuracyPercent --value $ACC || echo "(CloudWatch metric skipped: emulator does not support this call)"
                             fi
                         '''
                     }
