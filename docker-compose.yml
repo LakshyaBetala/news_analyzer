@@ -20,6 +20,8 @@ services:
     tmpfs:
       - /run
       - /var/run
+    volumes:
+      - k3s_data:/var/lib/rancher/k3s   # cluster state and imported images survive a restart
     ports:
       - "8081:80"   # the deployed app: http://localhost:8081
 
@@ -40,3 +42,4 @@ services:
 
 volumes:
   jenkins_home:
+  k3s_data:

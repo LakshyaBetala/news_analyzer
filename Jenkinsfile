@@ -57,7 +57,7 @@ pipeline {
                 script {
                     withTarget {
                         sh '''
-                            aws s3 cp s3://$BUCKET/releases.json releases.json || echo "no release history yet"
+                            aws s3 cp s3://$BUCKET/releases.json releases.json                                 || cp "$JENKINS_HOME/cloudforge-releases.json" releases.json                                 || echo "no release history yet"   # LocalStack forgets S3 on restart; Jenkins keeps a copy
                             . .venv/bin/activate
                             python eval/run_eval.py --baseline releases.json --out eval_result.json
                             pytest tests/ -q -m quality
@@ -144,6 +144,7 @@ pipeline {
                                 --message "$(git log -1 --pretty=%s)" --status "${RELEASE_STATUS:-BLOCKED}" \
                                 --eval eval_result.json --smoke smoke.json $CPU_ARG
                             [ -f releases.json ] && aws s3 cp releases.json s3://$BUCKET/releases.json
+                            [ -f releases.json ] && cp releases.json "$JENKINS_HOME/cloudforge-releases.json"
                             if [ -f eval_result.json ]; then
                                 ACC=$(python -c "import json;print(round(json.load(open('eval_result.json'))['accuracy']*100,1))")
                                 # CloudWatch Query API via signed curl: works on real AWS and on LocalStack, which rejects the CLI's newer protocol
