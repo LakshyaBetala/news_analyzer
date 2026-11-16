@@ -78,24 +78,24 @@ pipeline {
                     withTarget {
                         sh '''
                             for i in $(seq 1 60); do
-                                $RUN k3s kubectl get nodes 2>/dev/null | grep -q " Ready" && exit 0
+                                $RUN kubectl get nodes 2>/dev/null | grep -q " Ready" && exit 0
                                 echo "waiting for Kubernetes... ($i)"; sleep 10
                             done
                             exit 1
                         '''
                         // ship the image straight into the cluster's containerd: no registry needed
-                        sh 'docker save $IMAGE_NAME:$APP_VERSION | $RUN k3s ctr images import -'
+                        sh 'docker save $IMAGE_NAME:$APP_VERSION | $RUN ctr images import -'
                         sh '''
                             sed -e "s#__IMAGE__#docker.io/library/$IMAGE_NAME:$APP_VERSION#" \
                                 -e "s#__VERSION__#$APP_VERSION#" \
                                 -e "s#__BUCKET__#$BUCKET#" \
                                 -e "s#__REGION__#$AWS_DEFAULT_REGION#" \
                                 -e "s#__S3_ENDPOINT__#$S3_ENDPOINT#" k8s/app.yaml \
-                              | $RUN k3s kubectl apply -f -
+                              | $RUN kubectl apply -f -
                         '''
-                        int rc = sh(returnStatus: true, script: '$RUN k3s kubectl rollout status deployment/news-analyzer --timeout=180s')
+                        int rc = sh(returnStatus: true, script: '$RUN kubectl rollout status deployment/news-analyzer --timeout=180s')
                         if (rc != 0) {
-                            sh '$RUN k3s kubectl rollout undo deployment/news-analyzer || true'
+                            sh '$RUN kubectl rollout undo deployment/news-analyzer || true'
                             env.RELEASE_STATUS = 'ROLLED_BACK'
                             error('Rollout failed, rolled back')
                         }
@@ -113,7 +113,7 @@ pipeline {
                             python scripts/smoke_test.py $APP_URL --out smoke.json
                         ''')
                         if (rc != 0) {
-                            sh '$RUN k3s kubectl rollout undo deployment/news-analyzer || true'
+                            sh '$RUN kubectl rollout undo deployment/news-analyzer || true'
                             env.RELEASE_STATUS = 'ROLLED_BACK'
                             error('Canary failed, rolled back')
                         }

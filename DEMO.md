@@ -15,7 +15,7 @@
 1. **Explain** (30 s): "Normal pipelines check the build. Ours also checks the model's quality and blocks releases that make it worse."
 2. **Show the product** (45 s): open http://localhost:8081, paste a clickbait article ("SHOCKING secret miracle cure!!!") and then a factual one with a source of "Reuters". Point out the scores.
 3. **Show the platform** (45 s): Jenkins stage view (Test, Terraform, Quality Gate, Build, Deploy, Canary). Mention Terraform created S3, IAM and CloudWatch in LocalStack (AWS emulator) and the app runs as 2 pods on Kubernetes.
-   Terminal: `docker exec cloudforge-k3s k3s kubectl get pods` shows 2 Running pods.
+   Terminal: `docker exec cloudforge-k3s kubectl get pods` shows 2 Running pods.
 4. **Bad change** (90 s):
    - In `app/model.py` change `base_score += credible_score * 6` to `base_score += credible_score * 0`
    - `git commit -am "tweak weights" && git push`
@@ -30,7 +30,7 @@
 |---|---|
 | Jenkins does not start a build after push | click **Build Now** (polling runs every minute) |
 | Pipeline fails at Provision | `docker compose restart localstack`, rebuild |
-| Pods not Ready | `docker exec cloudforge-k3s k3s kubectl describe pods` |
+| Pods not Ready | `docker exec cloudforge-k3s kubectl describe pods` |
 | Everything is stuck | `docker compose down -v && docker compose up -d --build`, then one fresh build |
 | No internet at the venue | have the screenshots and a screen recording of a full run as backup |
 
