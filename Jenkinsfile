@@ -31,7 +31,7 @@ pipeline {
                     python3 -m venv .venv
                     . .venv/bin/activate
                     pip install -q -r requirements.txt
-                    pytest tests/ -q
+                    pytest tests/ -q -m "not quality"
                 '''
             }
         }
@@ -60,6 +60,7 @@ pipeline {
                             aws s3 cp s3://$BUCKET/releases.json releases.json || echo "no release history yet"
                             . .venv/bin/activate
                             python eval/run_eval.py --baseline releases.json --out eval_result.json
+                            pytest tests/ -q -m quality
                         '''
                     }
                 }

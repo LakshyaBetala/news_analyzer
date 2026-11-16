@@ -38,6 +38,7 @@ def test_version(client):
     assert r.json()["service"] == "news-credibility-analyzer"
 
 
+@pytest.mark.quality
 def test_analyze_credible_scores_higher_than_suspicious(client):
     good = client.post("/api/analyze", json=GOOD).json()
     bad = client.post("/api/analyze", json=BAD).json()
@@ -82,6 +83,7 @@ def test_metrics_exposed(client):
     assert client.get("/metrics").status_code == 200
 
 
+@pytest.mark.quality
 def test_sample_articles_stay_in_their_score_bands():
     """The dashboard's sample buttons promise low / borderline / high scores; keep that true."""
     from app.main import SAMPLES, analyzer
