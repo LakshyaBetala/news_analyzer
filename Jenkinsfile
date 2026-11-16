@@ -6,6 +6,7 @@
 pipeline {
     agent any
 
+    options { disableConcurrentBuilds() }   // one Terraform state, one release history: builds queue
     triggers { pollSCM('* * * * *') }   // push to GitHub -> build starts within a minute, no webhook needed
 
     parameters {
