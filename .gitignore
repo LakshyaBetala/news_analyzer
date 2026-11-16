@@ -46,3 +46,4 @@ smoke.json
 .terraform.lock.hcl
 infra/tfplan
 jenkins/cloudforge.pub
+.playwright-mcp/

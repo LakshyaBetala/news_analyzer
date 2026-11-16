@@ -1,632 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Credibility Analyzer</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary: #8b5cf6;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-gradient);
-            min-height: 100vh;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: var(--card-shadow);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .header .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            margin-bottom: 10px;
-        }
-        
-        .version {
-            display: inline-block;
-            background: rgba(255,255,255,0.2);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            margin-top: 10px;
-        }
-        
-        .content {
-            padding: 40px;
-        }
-        
-        .form-section {
-            margin-bottom: 30px;
-        }
-        
-        .form-group {
-            margin-bottom: 25px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 10px;
-            color: #374151;
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
-        
-        label i {
-            margin-right: 8px;
-            color: var(--primary);
-        }
-        
-        input[type="text"],
-        textarea {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 15px;
-            font-family: inherit;
-            transition: all 0.3s ease;
-            background: #f9fafb;
-        }
-        
-        input[type="text"]:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-        
-        textarea {
-            min-height: 150px;
-            resize: vertical;
-            line-height: 1.6;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
-        }
-        
-        .btn-primary:active:not(:disabled) {
-            transform: translateY(0);
-        }
-        
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 30px;
-            display: none;
-        }
-        
-        .loading.show {
-            display: block;
-        }
-        
-        .spinner {
-            border: 4px solid #f3f4f6;
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .error {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 16px;
-            border-radius: 10px;
-            margin: 20px 0;
-            display: none;
-            border-left: 4px solid var(--danger);
-        }
-        
-        .error.show {
-            display: block;
-            animation: slideDown 0.3s ease;
-        }
-        
-        .results {
-            margin-top: 30px;
-            display: none;
-            animation: fadeInUp 0.5s ease;
-        }
-        
-        .results.show {
-            display: block;
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .score-card {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            margin-bottom: 30px;
-            border: 2px solid #e2e8f0;
-        }
-        
-        .score-label {
-            font-size: 1.1rem;
-            color: #64748b;
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-        
-        .score-value {
-            font-size: 4rem;
-            font-weight: 700;
-            margin: 15px 0;
-            transition: color 0.3s ease;
-        }
-        
-        .score-value.high {
-            color: var(--success);
-        }
-        
-        .score-value.medium {
-            color: var(--warning);
-        }
-        
-        .score-value.low {
-            color: var(--danger);
-        }
-        
-        .score-bar-container {
-            margin-top: 20px;
-        }
-        
-        .score-bar {
-            width: 100%;
-            height: 40px;
-            background: #e2e8f0;
-            border-radius: 20px;
-            overflow: hidden;
-            position: relative;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .score-fill {
-            height: 100%;
-            transition: width 1s ease, background 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 14px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .score-fill.high {
-            background: linear-gradient(90deg, var(--success) 0%, #059669 100%);
-        }
-        
-        .score-fill.medium {
-            background: linear-gradient(90deg, var(--warning) 0%, #d97706 100%);
-        }
-        
-        .score-fill.low {
-            background: linear-gradient(90deg, var(--danger) 0%, #dc2626 100%);
-        }
-        
-        .section {
-            margin-bottom: 25px;
-        }
-        
-        .section-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .section-title i {
-            font-size: 1.2rem;
-        }
-        
-        .risk-factors,
-        .recommendations {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .risk-factors li,
-        .recommendations li {
-            padding: 15px 20px;
-            margin-bottom: 12px;
-            border-radius: 10px;
-            background: white;
-            border-left: 4px solid;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        
-        .risk-factors li:hover,
-        .recommendations li:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .risk-factors li {
-            border-left-color: var(--danger);
-            background: #fef2f2;
-        }
-        
-        .risk-factors li i {
-            color: var(--danger);
-            margin-top: 2px;
-        }
-        
-        .recommendations li {
-            border-left-color: var(--success);
-            background: #f0fdf4;
-        }
-        
-        .recommendations li i {
-            color: var(--success);
-            margin-top: 2px;
-        }
-        
-        .analysis-details {
-            background: #f8fafc;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .analysis-details h4 {
-            color: #475569;
-            margin-bottom: 15px;
-            font-size: 0.95rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .detail-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-        }
-        
-        .detail-item {
-            background: white;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .detail-item .label {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-bottom: 5px;
-        }
-        
-        .detail-item .value {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-        
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .content {
-                padding: 25px;
-            }
-            
-            .score-value {
-                font-size: 3rem;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>CloudForge AI · News Credibility Analyzer</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --text:#e2e8f0; --mute:#94a3b8;
+          --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b; --accent:#38bdf8; --field:#0b1220; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,Segoe UI,sans-serif; }
+  a { color:var(--accent); }
+  nav { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+        max-width:1100px; margin:0 auto; padding:16px; border-bottom:1px solid var(--line); }
+  .brand { font-weight:700; font-size:18px; letter-spacing:.3px; }
+  .brand span { color:var(--accent); }
+  .links { display:flex; gap:18px; align-items:center; font-size:14px; }
+  .links a { text-decoration:none; color:var(--mute); }
+  .links a.on { color:var(--text); font-weight:600; }
+  .ver { font-size:12px; color:var(--mute); border:1px solid var(--line); border-radius:99px; padding:2px 10px; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { margin:0 0 4px; font-size:26px; }
+  .sub { color:var(--mute); margin:0 0 20px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+  @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  label { display:block; font-size:13px; font-weight:600; color:var(--mute); margin:12px 0 6px; }
+  label:first-of-type { margin-top:0; }
+  input, textarea { width:100%; background:var(--field); color:var(--text); border:1px solid var(--line);
+                    border-radius:8px; padding:10px 12px; font:inherit; }
+  textarea { min-height:170px; resize:vertical; }
+  input:focus, textarea:focus, button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  .samples { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .hint { font-size:13px; color:var(--mute); }
+  .chip { background:transparent; color:var(--mute); border:1px solid var(--line); border-radius:99px;
+          padding:5px 12px; font:inherit; font-size:13px; cursor:pointer; }
+  .chip:hover { color:var(--text); border-color:var(--mute); }
+  .go { margin-top:16px; width:100%; background:var(--accent); color:#0f172a; border:0; border-radius:8px;
+        padding:12px; font:inherit; font-weight:700; cursor:pointer; }
+  .go:disabled { opacity:.6; cursor:wait; }
+  .empty { color:var(--mute); text-align:center; padding:60px 10px; }
+  .score { display:flex; align-items:baseline; gap:12px; }
+  .score b { font-size:56px; line-height:1; }
+  .verdict { font-weight:700; padding:3px 10px; border-radius:99px; font-size:13px; }
+  .high .verdict { background:var(--ok); color:#052e16; }  .high b { color:var(--ok); }
+  .mid .verdict  { background:var(--warn); color:#2a1a02; } .mid b  { color:var(--warn); }
+  .low .verdict  { background:var(--bad); color:#fff; }     .low b  { color:#f87171; }
+  .meter { height:10px; background:var(--field); border-radius:99px; margin:12px 0 4px; overflow:hidden; }
+  .meter i { display:block; height:100%; width:0; border-radius:99px; transition:width .5s ease; }
+  .high .meter i { background:var(--ok); } .mid .meter i { background:var(--warn); } .low .meter i { background:var(--bad); }
+  .scale { display:flex; justify-content:space-between; font-size:12px; color:var(--mute); }
+  h2 { font-size:14px; color:var(--mute); margin:18px 0 8px; text-transform:uppercase; letter-spacing:.6px; }
+  ul { margin:0; padding-left:18px; } li { margin:4px 0; }
+  .signals { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  @media (max-width:520px) { .signals { grid-template-columns:repeat(2,1fr); } }
+  .sig { background:var(--field); border-radius:8px; padding:10px; text-align:center; }
+  .sig b { display:block; font-size:22px; }
+  .sig span { font-size:12px; color:var(--mute); }
+  .err { background:#3b1111; border:1px solid var(--bad); color:#fecaca; border-radius:8px; padding:10px 12px; margin-top:12px; }
+  .note { color:var(--mute); font-size:12px; margin-top:14px; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1><i class="fas fa-newspaper"></i>AI News Credibility Analyzer</h1>
-            <div class="subtitle">Real-time analysis of news article credibility!</div>
-            <div class="version">Version {{ version }} &nbsp;·&nbsp; <a href="/releases" style="color:inherit;text-decoration:underline">Release Control Room &rarr;</a></div>
-        </div>
-        
-        <div class="content">
-            <form id="analyzeForm">
-                <div class="form-section">
-                    <div class="form-group">
-                        <label for="title"><i class="fas fa-heading"></i> Article Title *</label>
-                        <input type="text" id="title" name="title" required 
-                               placeholder="Enter the article title">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="content"><i class="fas fa-align-left"></i> Article Content *</label>
-                        <textarea id="content" name="content" required 
-                                  placeholder="Paste the article content here..."></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="source"><i class="fas fa-building"></i> Source (Optional)</label>
-                        <input type="text" id="source" name="source" 
-                               placeholder="e.g., Reuters, BBC, Times Now, etc.">
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn-primary" id="analyzeBtn">
-                    <i class="fas fa-search"></i>
-                    <span>Analyze Credibility</span>
-                </button>
-            </form>
-            
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p style="color: var(--primary); font-weight: 600;">Analyzing article credibility...</p>
-            </div>
-            
-            <div class="error" id="error"></div>
-            
-            <div class="results" id="results">
-                <div class="score-card">
-                    <div class="score-label">Credibility Score</div>
-                    <div class="score-value" id="scoreValue">0</div>
-                    <div class="score-bar-container">
-                        <div class="score-bar">
-                            <div class="score-fill" id="scoreFill" style="width: 0%">
-                                <span id="scoreText">0%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">
-                        <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
-                        Risk Factors
-                    </div>
-                    <ul class="risk-factors" id="riskFactors"></ul>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">
-                        <i class="fas fa-lightbulb" style="color: var(--success);"></i>
-                        Recommendations
-                    </div>
-                    <ul class="recommendations" id="recommendations"></ul>
-                </div>
-                
-                <div class="analysis-details" id="analysisDetails" style="display: none;">
-                    <h4>Analysis Details</h4>
-                    <div class="detail-grid" id="detailGrid"></div>
-                </div>
-            </div>
-        </div>
+<nav>
+  <div class="brand">Cloud<span>Forge</span> AI</div>
+  <div class="links">
+    <a href="/" class="on">Analyzer</a>
+    <a href="/releases">Release Control Room</a>
+    <a href="/platform">Platform</a>
+    <a href="/docs">API</a>
+    <span class="ver">v{{ version }}</span>
+  </div>
+</nav>
+<div class="wrap">
+  <h1>News Credibility Analyzer</h1>
+  <p class="sub">Paste an article to get a credibility score, the warning signs found and what to check next.</p>
+  <div class="grid">
+    <form class="card" id="form">
+      <div class="samples" aria-label="Load a sample article">
+        <span class="hint">Try a sample:</span>
+        <button type="button" class="chip" data-sample="fake">Clickbait</button>
+        <button type="button" class="chip" data-sample="mixed">Borderline</button>
+        <button type="button" class="chip" data-sample="real">News report</button>
+        <button type="button" class="chip" data-sample="any">Surprise me</button>
+      </div>
+      <label for="title">Title</label>
+      <input id="title" required maxlength="500" placeholder="Article headline">
+      <label for="content">Content</label>
+      <textarea id="content" required placeholder="Paste the article text"></textarea>
+      <label for="source">Source (optional)</label>
+      <input id="source" maxlength="200" placeholder="e.g. Reuters, BBC">
+      <button class="go" id="go">Analyze credibility</button>
+      <div class="err" id="err" role="alert" hidden></div>
+    </form>
+    <section class="card" id="out" aria-live="polite">
+      <div class="empty">Results appear here.</div>
+    </section>
+  </div>
+</div>
+<script>
+const SAMPLES = {{ samples | tojson }};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let last = null;
+document.querySelectorAll('[data-sample]').forEach(b => b.onclick = () => {
+  const pool = b.dataset.sample === 'any' ? Object.values(SAMPLES).flat() : SAMPLES[b.dataset.sample];
+  let s;
+  do { s = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && s === last);
+  last = s;
+  $('title').value = s.title; $('content').value = s.content; $('source').value = s.source;
+  $('form').requestSubmit();  // analyse straight away
+});
+
+$('form').onsubmit = async e => {
+  e.preventDefault();
+  $('go').disabled = true; $('go').textContent = 'Analyzing…'; $('err').hidden = true;
+  try {
+    const r = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: $('title').value, content: $('content').value, source: $('source').value }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : 'Please fill in the title and content.');
+    show(d);
+  } catch (ex) {
+    $('err').textContent = ex.message || 'Could not reach the service.'; $('err').hidden = false;
+  } finally {
+    $('go').disabled = false; $('go').textContent = 'Analyze credibility';
+  }
+};
+
+function show(d) {
+  const s = d.credibility_score;
+  const [cls, label] = s >= 60 ? ['high', 'Likely credible'] : s >= 40 ? ['mid', 'Treat with caution'] : ['low', 'Low credibility'];
+  const a = d.analysis_details || {};
+  const sig = (n, t) => `<div class="sig"><b>${esc(n ?? 0)}</b><span>${t}</span></div>`;
+  $('out').innerHTML = `
+    <div class="${cls}">
+      <div class="score"><b>${s.toFixed(0)}</b><span>/ 100</span><span class="verdict">${label}</span></div>
+      <div class="meter" role="img" aria-label="Score ${s.toFixed(0)} out of 100"><i></i></div>
+      <div class="scale"><span>0 · low</span><span>60 · credible threshold</span><span>100</span></div>
     </div>
-    
-    <script>
-        const form = document.getElementById('analyzeForm');
-        const loading = document.getElementById('loading');
-        const error = document.getElementById('error');
-        const results = document.getElementById('results');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Reset UI
-            results.classList.remove('show');
-            error.classList.remove('show');
-            loading.classList.add('show');
-            analyzeBtn.disabled = true;
-            
-            const title = document.getElementById('title').value;
-            const content = document.getElementById('content').value;
-            const source = document.getElementById('source').value;
-            
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ title, content, source })
-                });
-                
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error || 'Analysis failed');
-                }
-                
-                // Display results
-                displayResults(data);
-                
-            } catch (err) {
-                error.innerHTML = `<i class="fas fa-exclamation-circle"></i> <strong>Error:</strong> ${err.message}`;
-                error.classList.add('show');
-            } finally {
-                loading.classList.remove('show');
-                analyzeBtn.disabled = false;
-            }
-        });
-        
-        function getScoreClass(score) {
-            if (score >= 70) return 'high';
-            if (score >= 40) return 'medium';
-            return 'low';
-        }
-        
-        function displayResults(data) {
-            const score = data.credibility_score;
-            const scoreClass = getScoreClass(score);
-            
-            // Update score value
-            const scoreValue = document.getElementById('scoreValue');
-            scoreValue.textContent = score.toFixed(1);
-            scoreValue.className = `score-value ${scoreClass}`;
-            
-            // Update score bar
-            const scoreFill = document.getElementById('scoreFill');
-            const scoreText = document.getElementById('scoreText');
-            scoreFill.style.width = score + '%';
-            scoreFill.className = `score-fill ${scoreClass}`;
-            scoreText.textContent = score.toFixed(1) + '%';
-            
-            // Update risk factors
-            const riskFactorsList = document.getElementById('riskFactors');
-            riskFactorsList.innerHTML = '';
-            if (data.risk_factors && data.risk_factors.length > 0) {
-                data.risk_factors.forEach(factor => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<i class="fas fa-exclamation-circle"></i><span>${factor}</span>`;
-                    riskFactorsList.appendChild(li);
-                });
-            } else {
-                const li = document.createElement('li');
-                li.innerHTML = '<i class="fas fa-check-circle"></i><span>No significant risk factors identified</span>';
-                li.style.borderLeftColor = 'var(--success)';
-                li.style.background = '#f0fdf4';
-                riskFactorsList.appendChild(li);
-            }
-            
-            // Update recommendations
-            const recommendationsList = document.getElementById('recommendations');
-            recommendationsList.innerHTML = '';
-            if (data.recommendations && data.recommendations.length > 0) {
-                data.recommendations.forEach(rec => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<i class="fas fa-check-circle"></i><span>${rec}</span>`;
-                    recommendationsList.appendChild(li);
-                });
-            }
-            
-            // Show analysis details if available
-            if (data.analysis_details) {
-                const detailsDiv = document.getElementById('analysisDetails');
-                const detailGrid = document.getElementById('detailGrid');
-                detailGrid.innerHTML = '';
-                
-                const details = [
-                    { label: 'Credible Indicators', value: data.analysis_details.credible_indicators || 0 },
-                    { label: 'Suspicious Indicators', value: data.analysis_details.suspicious_indicators || 0 },
-                    { label: 'Emotional Patterns', value: data.analysis_details.emotional_manipulation || 0 },
-                    { label: 'Source Score', value: (data.analysis_details.source_credibility || 0).toFixed(1) }
-                ];
-                
-                details.forEach(detail => {
-                    const item = document.createElement('div');
-                    item.className = 'detail-item';
-                    item.innerHTML = `
-                        <div class="label">${detail.label}</div>
-                        <div class="value">${detail.value}</div>
-                    `;
-                    detailGrid.appendChild(item);
-                });
-                
-                detailsDiv.style.display = 'block';
-            }
-            
-            // Show results with animation
-            results.classList.add('show');
-            
-            // Scroll to results
-            results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    </script>
+    <h2>Signals found</h2>
+    <div class="signals">${sig(a.credible_indicators, 'Credible words')}${sig(a.suspicious_indicators, 'Suspicious words')}${sig(a.emotional_manipulation, 'Emotional patterns')}${sig(a.source_credibility, 'Source score')}</div>
+    <h2>Risk factors</h2><ul>${d.risk_factors.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <h2>Recommendations</h2><ul>${d.recommendations.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <p class="note">A heuristic screening aid, not a fact-check. Served by release v${esc(d.version)}.</p>`;
+  requestAnimationFrame(() => { $('out').querySelector('.meter i').style.width = s + '%'; });
+}
+</script>
 </body>
 </html>
-
-

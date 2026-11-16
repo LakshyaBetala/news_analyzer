@@ -1,0 +1,153 @@
+{
+ "fake": [
+  {
+   "title": "SHOCKING secret cure doctors hate!!!",
+   "source": "unknown",
+   "content": "You won't believe this miracle cure they don't want you to know about!!! One weird trick, guaranteed instant results. ACT NOW, limited time offer!!!"
+  },
+  {
+   "title": "Banks are HIDING this one weird trick",
+   "source": "anonymous",
+   "content": "This viral secret is a conspiracy they don't want you to know about. Guaranteed to save thousands instantly. Act now!!!"
+  },
+  {
+   "title": "Celebrity reveals amazing discovery",
+   "source": "viralbuzz.net",
+   "content": "You won't believe what happened next. This amazing discovery has gone viral and experts are stunned. Click to find out the secret before it is deleted!!"
+  },
+  {
+   "title": "Is your phone spying on you? The cover-up",
+   "source": "",
+   "content": "Insiders say a huge cover-up is underway. Nobody is talking about it, but this shocking story is spreading fast. Share it with everyone you know."
+  },
+  {
+   "title": "Drink this before bed and melt belly fat INSTANTLY",
+   "source": "healthhacks247",
+   "content": "Doctors hate this one weird trick! Thousands have already tried this miracle drink. Guaranteed results or your money back. Limited time only!!!"
+  },
+  {
+   "title": "Government secretly adding chemicals to tap water",
+   "source": "anonymous",
+   "content": "They don't want you to know the truth. A whistleblower has exposed the cover-up, and the mainstream media is hiding it. Share before it gets deleted!!"
+  },
+  {
+   "title": "Scientists BAFFLED by man who never sleeps",
+   "source": "",
+   "content": "This shocking story has gone viral overnight. You won't believe how he does it. Experts are stunned and nobody can explain it."
+  },
+  {
+   "title": "Free iPhone for the first 1000 people!!!",
+   "source": "unverified",
+   "content": "Act now! This amazing giveaway is guaranteed for the first 1000 visitors. Click the link, enter your details and claim your prize instantly!!!"
+  },
+  {
+   "title": "Ancient pyramid built by aliens, new footage proves",
+   "source": "mysteryworld",
+   "content": "Shocking new footage proves what the government has hidden for decades. This conspiracy goes deeper than anyone thought. Watch before they take it down!!"
+  },
+  {
+   "title": "Celebrity death hoax spreads again",
+   "source": "",
+   "content": "A viral post claims a famous actor has died in a secret accident. Fans are panicking and sharing the post. You won't believe the comments."
+  }
+ ],
+ "mixed": [
+  {
+   "title": "Local cafe says new diet helps you lose weight",
+   "source": "City Lifestyle Blog",
+   "content": "A cafe owner says customers who tried the new menu lost weight within weeks. Several regulars shared their stories online. The owner plans to open a second branch next month."
+  },
+  {
+   "title": "Report claims phone batteries will last a week",
+   "source": "Tech Daily News",
+   "content": "A new report from a startup claims its battery design could let phones run for a week. The company has not yet released the data, and the claim has gone viral on social media."
+  },
+  {
+   "title": "Residents worried about new tower",
+   "source": "",
+   "content": "Some residents say the new phone tower near the school is making people sick. A neighbourhood group posted a statement asking the council to investigate, though no study has been done."
+  },
+  {
+   "title": "Coffee may help memory, survey suggests",
+   "source": "",
+   "content": "A small online survey this week suggests that two cups of coffee a day may help short-term memory. The authors said more research is needed before anyone changes their habits."
+  },
+  {
+   "title": "Is this new payments app a scam?",
+   "source": "",
+   "content": "A post shared thousands of times says the new payments app steals personal data. The company says the claim is false, but the post keeps going viral."
+  },
+  {
+   "title": "Influencer says cold showers cure anxiety",
+   "source": "Wellness Weekly",
+   "content": "A popular influencer told followers that cold showers cured her anxiety in a month. Some fans say it worked for them too, while others were less convinced."
+  },
+  {
+   "title": "New smartwatch can predict illness, company says",
+   "source": "Gadget Times",
+   "content": "A startup says its smartwatch can predict illness days in advance. The company shared early results at a launch event but has not published its data."
+  },
+  {
+   "title": "Students claim new study app doubles grades",
+   "source": "",
+   "content": "Several students at a local college say a new study app doubled their grades in one term. The app's makers say a formal study is planned next year."
+  },
+  {
+   "title": "Rumours of a fuel price cut next month",
+   "source": "Daily Post",
+   "content": "Messages circulating online say fuel prices will be cut next month. The oil ministry has not commented, and analysts say it is too early to tell."
+  }
+ ],
+ "real": [
+  {
+   "title": "Central bank holds interest rates steady",
+   "source": "Reuters",
+   "content": "The central bank confirmed on Tuesday that it would hold rates steady, according to an official statement. The decision follows a published analysis of inflation data and a report from its research division. Economists cited in the findings said the evidence supports a cautious approach."
+  },
+  {
+   "title": "WHO publishes updated vaccination guidance",
+   "source": "Associated Press",
+   "content": "The World Health Organization published updated guidance on Thursday after a review of research evidence. The report, which was fact-checked by external experts, cites data from 40 studies. According to officials, the findings were confirmed in a transparent process."
+  },
+  {
+   "title": "City council approves transit budget",
+   "source": "The Guardian",
+   "content": "The city council approved the transit budget on Monday, according to an official statement. An independent audit confirmed the figures, and the report will be published online."
+  },
+  {
+   "title": "Highway reopens after monsoon repairs",
+   "source": "Times of India",
+   "content": "The coastal highway reopened on Friday after three weeks of repairs, according to the state transport department. Officials said the road was inspected and confirmed safe, and traffic is moving normally."
+  },
+  {
+   "title": "Researchers map coral reef recovery",
+   "source": "BBC",
+   "content": "Marine researchers have mapped how coral reefs recover after heatwaves, according to a study in a peer-reviewed journal. The team said the data came from five years of surveys."
+  },
+  {
+   "title": "ISRO confirms successful satellite launch",
+   "source": "PTI",
+   "content": "The Indian Space Research Organisation confirmed the satellite reached its planned orbit on Wednesday, according to an official statement. Mission data will be published after initial checks, officials said."
+  },
+  {
+   "title": "Election commission publishes final voter turnout",
+   "source": "The Hindu",
+   "content": "The election commission published final turnout figures on Monday. According to the official data, turnout rose two points compared with the previous election. The report includes a breakdown by district."
+  },
+  {
+   "title": "Study finds air pollution linked to asthma in children",
+   "source": "NPR",
+   "content": "A peer-reviewed study published in a medical journal found that children in high-pollution areas had higher rates of asthma. The researchers analysed data from 12,000 children and said the findings were consistent with earlier research."
+  },
+  {
+   "title": "Supreme Court issues ruling on data privacy",
+   "source": "Associated Press",
+   "content": "The court issued its ruling on Friday, according to a published statement. The opinion cites earlier cases and a detailed analysis of the evidence. Legal experts said the decision is consistent with official findings."
+  },
+  {
+   "title": "Monsoon arrives in Kerala, weather department says",
+   "source": "Times of India",
+   "content": "The southwest monsoon reached the Kerala coast on Saturday, the India Meteorological Department said in an official statement. Rainfall data from coastal stations confirmed the onset."
+  }
+ ]
+}

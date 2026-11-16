@@ -32,6 +32,9 @@ Instrumentator().instrument(app).expose(app)
 # Initialize your ML Logic
 analyzer = NewsCredibilityAnalyzer()
 VERSION = os.getenv('APP_VERSION', '1.0.0')
+# Demo articles for the dashboard's sample buttons, grouped by expected score band
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples.json"), encoding="utf-8") as _f:
+    SAMPLES = json.load(_f)
 
 # 4. Define the Data "Schema" (Pydantic)
 # This is the "Contract". The user MUST send data looking like this.
@@ -67,7 +70,7 @@ async def read_root(request: Request):
     # Note: For a pure API, we usually don't serve HTML, 
     # but we keep this for your project continuity.
     templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse(request, "dashboard.html", {"version": VERSION})
+    return templates.TemplateResponse(request, "dashboard.html", {"version": VERSION, "samples": SAMPLES})
 
 @app.post("/api/analyze", response_model=AnalysisResponse)
 async def analyze_news(request: NewsRequest):
@@ -126,6 +129,17 @@ async def get_releases():
 async def releases_page(request: Request):
     templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(request, "releases.html", {"version": VERSION})
+
+
+@app.get("/platform", response_class=HTMLResponse)
+async def platform_page(request: Request):
+    templates = Jinja2Templates(directory="app/templates")
+    return templates.TemplateResponse(request, "platform.html", {
+        "version": VERSION,
+        "pod": os.getenv("HOSTNAME", "local"),  # Kubernetes sets HOSTNAME to the pod name
+        "bucket": os.getenv("S3_BUCKET", ""),
+        "target": "Local (LocalStack + k3s)" if os.getenv("S3_ENDPOINT_URL") else ("AWS (EC2 + k3s)" if os.getenv("S3_BUCKET") else "Developer machine"),
+    })
 
 
 @app.get("/api/version")

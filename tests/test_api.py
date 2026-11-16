@@ -59,6 +59,7 @@ def test_analyze_missing_fields_is_422(client):
 def test_dashboard_and_releases_pages(client):
     assert client.get("/").status_code == 200
     assert client.get("/releases").status_code == 200
+    assert client.get("/platform").status_code == 200
 
 
 def test_releases_api_reads_local_file(client, tmp_path, monkeypatch):
@@ -79,3 +80,13 @@ def test_releases_api_empty_when_nothing_recorded(client, tmp_path, monkeypatch)
 
 def test_metrics_exposed(client):
     assert client.get("/metrics").status_code == 200
+
+
+def test_sample_articles_stay_in_their_score_bands():
+    """The dashboard's sample buttons promise low / borderline / high scores; keep that true."""
+    from app.main import SAMPLES, analyzer
+    bands = {"fake": (0, 40), "mixed": (40, 75), "real": (60, 100)}
+    for band, (lo, hi) in bands.items():
+        for s in SAMPLES[band]:
+            score = analyzer.analyze(s["title"], s["content"], s["source"])["credibility_score"]
+            assert lo <= score <= hi, f"{band}: {s['title']!r} scored {score}"
