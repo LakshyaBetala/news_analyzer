@@ -143,7 +143,7 @@ pipeline {
                             python scripts/record_release.py --version "$APP_VERSION" --commit "$GIT_SHORT" \
                                 --message "$(git log -1 --pretty=%s)" --status "$RELEASE_STATUS" \
                                 --eval eval_result.json --smoke smoke.json $CPU_ARG
-                            aws s3 cp releases.json s3://$BUCKET/releases.json
+                            [ -f releases.json ] && aws s3 cp releases.json s3://$BUCKET/releases.json
                             if [ -f eval_result.json ]; then
                                 ACC=$(python -c "import json;print(round(json.load(open('eval_result.json'))['accuracy']*100,1))")
                                 # CloudWatch Query API via signed curl: works on real AWS and on LocalStack, which rejects the CLI's newer protocol

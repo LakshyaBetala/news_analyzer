@@ -47,6 +47,10 @@ def main():
     a = p.parse_args()
 
     ev, smoke = load(a.eval), load(a.smoke)
+    if a.status == "BLOCKED" and ev.get("passed") is not False:
+        # the run broke before or after the gate (network, abort...): not a release decision
+        print(f"not recorded: {a.version} stopped without a quality-gate verdict")
+        return
     record = {
         "version": a.version,
         "commit": a.commit,

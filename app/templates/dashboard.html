@@ -94,7 +94,7 @@
       <div class="err" id="err" role="alert" hidden></div>
     </form>
     <section class="card" id="out" aria-live="polite">
-      <div class="empty">Results appear here.</div>
+      <div class="empty">Paste an article or load a sample, then press <b>Analyze credibility</b>.</div>
     </section>
   </div>
 </div>
@@ -110,7 +110,8 @@ document.querySelectorAll('[data-sample]').forEach(b => b.onclick = () => {
   do { s = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && s === last);
   last = s;
   $('title').value = s.title; $('content').value = s.content; $('source').value = s.source;
-  $('form').requestSubmit();  // analyse straight away
+  $('out').innerHTML = '<div class="empty">Sample loaded. Press <b>Analyze credibility</b> to score it.</div>';
+  $('go').focus();
 });
 
 $('form').onsubmit = async e => {
