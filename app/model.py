@@ -85,7 +85,7 @@ class NewsCredibilityAnalyzer:
         base_score += text_length_factor * 10  # Reward longer articles
         
         # Negative adjustments (less harsh)
-        base_score -= suspicious_score * 6  # Reduced from 8
+        base_score += suspicious_score * 6  # Reduced from 8
         base_score -= emotional_score * 8  # Reduced from 10
         
         # Ensure minimum score for normal articles (unless very suspicious)
