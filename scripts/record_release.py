@@ -24,6 +24,8 @@ def verdict(status, ev, smoke):
         why = "; ".join(ev.get("reasons") or ["quality gate failed"])
         return f"Blocked before deploy: {why}. The previous version is still live."
     if status == "ROLLED_BACK":
+        if smoke.get("reasons"):
+            return "Deployed, but the live canary failed: " + "; ".join(smoke["reasons"]) + ". Rolled back automatically."
         return "Quality gate passed but the new pods never became healthy in Kubernetes. Rolled back automatically."
     msg = f"Healthy. Accuracy {acc:.0%}" if acc is not None else "Healthy."
     if "baseline_accuracy" in ev:
