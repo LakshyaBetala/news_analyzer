@@ -31,5 +31,5 @@ The app reads `releases.json` for `/api/releases`: from S3 (via the EC2 instance
 - Jenkins runs in Docker via `docker compose up -d --build` (admin/admin, job `cloudforge` created by `jenkins/casc.yaml` from the GitHub repo, so changes must be pushed to build). The Jenkinsfile uses `sh` only.
 - The local compose stack and the real-AWS path have not been exercised end to end yet; only the app, gate, scripts and `terraform validate` were tested.
 - Terraform state is local (in the Jenkins workspace/volume). Deleting it orphans the AWS resources.
-- Demo regression: changing `credible_score * 6` to `* 0` in `app/model.py` drops eval accuracy to 50% and trips the gate.
+- Demo regression: changing `base_score -= suspicious_score * 6` to `+=` in `app/model.py` drops eval accuracy to 58% (14/24) and trips the gate. (Zeroing `credible_score` alone does NOT, because source and length still carry credible articles past 60.)
 - `releases.json`, `eval_result.json`, `smoke.json` are generated and git-ignored.

@@ -89,7 +89,7 @@ function render(rels) {
       <div class="metrics">
         <div><span>Accuracy </span><b>${pct(r.accuracy)}</b>${r.baseline_accuracy != null ? ` <span>(prev ${pct(r.baseline_accuracy)})</span>` : ''}</div>
         <div><span>Avg latency </span><b>${r.latency_ms != null ? r.latency_ms + ' ms' : '&ndash;'}</b></div>
-        <div><span>EC2 CPU </span><b>${r.cpu_percent != null ? r.cpu_percent + '%' : '&ndash;'}</b></div>
+        ${r.cpu_percent != null ? `<div><span>EC2 CPU </span><b>${r.cpu_percent}%</b></div>` : ''}
       </div>
       <div class="why">${esc(r.verdict || '')}</div>
     </div>`).join('');
