@@ -92,3 +92,8 @@ def test_sample_articles_stay_in_their_score_bands():
         for s in SAMPLES[band]:
             score = analyzer.analyze(s["title"], s["content"], s["source"])["credibility_score"]
             assert lo <= score <= hi, f"{band}: {s['title']!r} scored {score}"
+
+
+def test_analyze_rejects_empty_or_oversized_input(client):
+    assert client.post("/api/analyze", json={"title": "", "content": "x"}).status_code == 422
+    assert client.post("/api/analyze", json={"title": "t", "content": "x" * 20_001}).status_code == 422

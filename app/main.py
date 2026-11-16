@@ -1,59 +1,45 @@
+"""CloudForge AI: FastAPI service for the news credibility analyzer, its Release Control Room and Platform pages."""
 import json
 import os
-import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-# 1. Import FastAPI tools
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 from prometheus_fastapi_instrumentator import Instrumentator
+from pydantic import BaseModel, ConfigDict, Field
 
-# Handle imports (same as before)
-try:
-    from .model import NewsCredibilityAnalyzer
-except ImportError:
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from app.model import NewsCredibilityAnalyzer
+from .model import NewsCredibilityAnalyzer
 
-# 2. Initialize the App
+HERE = Path(__file__).resolve().parent
+VERSION = os.getenv("APP_VERSION", "1.0.0")
+
 app = FastAPI(
-    title="News Credibility Analyzer",
-    description="A real-time ML service to score news credibility.",
-    version=os.getenv('APP_VERSION', '1.0.0')
+    title="CloudForge AI · News Credibility Analyzer",
+    description="Scores news articles for credibility; every release is quality-gated before deployment.",
+    version=VERSION,
 )
+Instrumentator().instrument(app).expose(app)  # Prometheus metrics at /metrics
 
-# 3. Setup Monitoring (Prometheus)
-# This automatically creates a /metrics endpoint that Prometheus will scrape later
-Instrumentator().instrument(app).expose(app)
-
-# Initialize your ML Logic
+templates = Jinja2Templates(directory=HERE / "templates")
 analyzer = NewsCredibilityAnalyzer()
-VERSION = os.getenv('APP_VERSION', '1.0.0')
 # Demo articles for the dashboard's sample buttons, grouped by expected score band
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples.json"), encoding="utf-8") as _f:
-    SAMPLES = json.load(_f)
+SAMPLES = json.loads((HERE / "samples.json").read_text(encoding="utf-8"))
 
-# 4. Define the Data "Schema" (Pydantic)
-# This is the "Contract". The user MUST send data looking like this.
+
 class NewsRequest(BaseModel):
-    title: str
-    content: str
-    source: str = ""  # Optional, defaults to empty string
+    title: str = Field(min_length=1, max_length=500)
+    content: str = Field(min_length=1, max_length=20_000)
+    source: str = Field(default="", max_length=200)
 
-    # Example for the auto-generated docs
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "title": "Aliens Land in Times Square",
-                "content": "Scientists confirm UFO sighting in New York...",
-                "source": "Galaxy News"
-            }
-        }
+    model_config = ConfigDict(json_schema_extra={"example": {
+        "title": "Central bank holds interest rates steady",
+        "content": "According to an official statement, the published data confirmed the findings.",
+        "source": "Reuters",
+    }})
 
-# 5. Define the Response "Schema" (Optional but good practice)
+
 class AnalysisResponse(BaseModel):
     credibility_score: float
     risk_factors: list[str]
@@ -62,44 +48,10 @@ class AnalysisResponse(BaseModel):
     timestamp: str
     version: str
 
-# --- ROUTES ---
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    """Serves the dashboard (if you still want the UI)."""
-    # Note: For a pure API, we usually don't serve HTML, 
-    # but we keep this for your project continuity.
-    templates = Jinja2Templates(directory="app/templates")
-    return templates.TemplateResponse(request, "dashboard.html", {"version": VERSION, "samples": SAMPLES})
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
-@app.post("/api/analyze", response_model=AnalysisResponse)
-async def analyze_news(request: NewsRequest):
-    """
-    Analyzes a news article.
-    FastAPI automatically validates that 'request' matches 'NewsRequest'.
-    """
-    try:
-        # We access data directly like an object: request.title
-        result = analyzer.analyze(request.title, request.content, request.source)
-        
-        # Add metadata
-        result['timestamp'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-        result['version'] = VERSION
-        
-        return result
-    
-    except Exception as e:
-        # In FastAPI, we raise HTTP exceptions instead of returning JSON manually
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/health")
-async def health_check():
-    """Simple health check for Kubernetes/Docker."""
-    return {
-        "status": "healthy",
-        "version": VERSION,
-        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-    }
 
 def _load_releases() -> list:
     """Release history written by the Jenkins pipeline: S3 (S3_BUCKET) or a local file."""
@@ -120,30 +72,46 @@ def _load_releases() -> list:
     return []
 
 
-@app.get("/api/releases")
-async def get_releases():
-    return _load_releases()
+@app.get("/", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    return templates.TemplateResponse(request, "dashboard.html", {"version": VERSION, "samples": SAMPLES})
 
 
 @app.get("/releases", response_class=HTMLResponse)
 async def releases_page(request: Request):
-    templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(request, "releases.html", {"version": VERSION})
 
 
 @app.get("/platform", response_class=HTMLResponse)
 async def platform_page(request: Request):
-    templates = Jinja2Templates(directory="app/templates")
     return templates.TemplateResponse(request, "platform.html", {
         "version": VERSION,
         "pod": os.getenv("HOSTNAME", "local"),  # Kubernetes sets HOSTNAME to the pod name
         "bucket": os.getenv("S3_BUCKET", ""),
-        "target": "Local (LocalStack + k3s)" if os.getenv("S3_ENDPOINT_URL") else ("AWS (EC2 + k3s)" if os.getenv("S3_BUCKET") else "Developer machine"),
+        "target": "Local (LocalStack + k3s)" if os.getenv("S3_ENDPOINT_URL")
+                  else "AWS (EC2 + k3s)" if os.getenv("S3_BUCKET") else "Developer machine",
     })
+
+
+@app.post("/api/analyze", response_model=AnalysisResponse)
+async def analyze_news(req: NewsRequest):
+    try:
+        result = analyzer.analyze(req.title, req.content, req.source)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {**result, "timestamp": _now(), "version": VERSION}
+
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy", "version": VERSION, "timestamp": _now()}
 
 
 @app.get("/api/version")
 async def get_version():
     return {"version": VERSION, "service": "news-credibility-analyzer"}
 
-# To run locally: uvicorn app.main:app --reload
+
+@app.get("/api/releases")
+async def get_releases():
+    return _load_releases()

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000     # dashboard at /, Control Room at /releases, docs at /docs
-pytest tests/ -v                              # all tests
+pytest tests/ -v                              # all tests (unit: -m "not quality", model quality: -m quality)
 pytest tests/test_api.py::test_health -v      # single test
 python eval/run_eval.py [--baseline releases.json]   # the quality gate (exit 1 = fail)
 python scripts/smoke_test.py http://127.0.0.1:8000    # live canary (use 127.0.0.1, "localhost" is slow on Windows)
@@ -29,7 +29,11 @@ The app reads `releases.json` for `/api/releases`: from S3 (via the EC2 instance
 ## Gotchas
 
 - Jenkins runs in Docker via `docker compose up -d --build` (admin/admin, job `cloudforge` created by `jenkins/casc.yaml` from the GitHub repo, so changes must be pushed to build). The Jenkinsfile uses `sh` only.
-- The local compose stack and the real-AWS path have not been exercised end to end yet; only the app, gate, scripts and `terraform validate` were tested.
+- The local target runs end to end (Jenkins builds 11, 13, 15 promoted; 14 blocked by the gate). The real-AWS path (`TARGET=aws`) is validated but has never been applied.
+- Jenkins runs one build at a time (`disableConcurrentBuilds`); concurrent builds would each get their own Terraform state and S3 bucket.
+- Variables declared in the Jenkinsfile `environment {}` block cannot be reassigned with `env.X =`; `RELEASE_STATUS` is therefore set only from script blocks.
+- Model-quality tests are marked `@pytest.mark.quality` and run in the Quality Gate stage; the Test stage runs `-m "not quality"`.
+- Changing `requirements.txt` invalidates the Docker pip layer; on a slow network the next image build takes 15+ minutes.
 - Terraform state is local (in the Jenkins workspace/volume). Deleting it orphans the AWS resources.
 - Demo regression: changing `base_score -= suspicious_score * 6` to `+=` in `app/model.py` drops eval accuracy to 58% (14/24) and trips the gate. (Zeroing `credible_score` alone does NOT, because source and length still carry credible articles past 60.)
 - `releases.json`, `eval_result.json`, `smoke.json` are generated and git-ignored.

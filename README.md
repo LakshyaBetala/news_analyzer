@@ -44,8 +44,8 @@ Every release is scored on `eval/dataset.json` (24 labeled articles). If accurac
 
 ```bash
 pip install -r requirements.txt
-uvicorn app.main:app --port 8000        # http://localhost:8000  and  /releases
-pytest tests/ -v
+uvicorn app.main:app --port 8000        # http://localhost:8000, /releases, /platform
+pytest tests/ -v                        # -m "not quality" = unit tests only
 python eval/run_eval.py                 # the quality gate on its own
 ```
 
@@ -75,16 +75,18 @@ Stop everything: `docker compose down` (add `-v` to wipe state).
 
 | Endpoint | |
 |---|---|
-| `GET /` | analyzer UI |
+| `GET /` | analyzer UI, with 28 sample articles (clickbait, borderline, news report) |
 | `POST /api/analyze` | `{title, content, source?}` → score, risk factors, recommendations |
 | `GET /api/health`, `/api/version` | liveness, running version |
 | `GET /api/releases`, `GET /releases` | release history / Control Room page |
+| `GET /platform` | how this release was delivered: live pod, version, S3 bucket, pipeline, tools |
 | `GET /metrics` | Prometheus metrics |
+| `GET /docs` | interactive API docs |
 
 ## Layout
 
 ```
-app/             FastAPI app + scoring logic + templates
+app/             FastAPI app, scoring logic, templates, samples.json (demo articles)
 eval/            labeled dataset + the quality gate
 scripts/         smoke_test.py (live canary), record_release.py (writes releases.json)
 infra/           Terraform (local_mode toggles LocalStack vs real AWS)
@@ -92,5 +94,16 @@ k8s/             Deployment + Service
 jenkins/         Jenkins image (all tools + plugins) and casc.yaml (admin user + job)
 docker-compose.yml   LocalStack + k3s + Jenkins
 .github/         CI workflow
-DEMO.md          review demo script
+tests/           unit tests; @pytest.mark.quality ones run in the Quality Gate stage
+DEMO.md          demo script: what to open, show and say
 ```
+
+## Verified results (local target)
+
+| Jenkins build | Change | Outcome |
+|---|---|---|
+| 11, 13 | normal changes | PROMOTED: 100% accuracy, ~3 ms live latency, 2 pods on k3s |
+| 14 | one-character typo (`-=` → `+=` on the suspicious-word weight) | unit tests passed; **BLOCKED** at the Quality Gate: 58%, previous version stayed live |
+| 15 | revert | PROMOTED again |
+
+The real-AWS target is written and passes `terraform validate`, but has not been applied to an AWS account.
