@@ -23,6 +23,18 @@ def post(url, payload):
     return body, (time.perf_counter() - start) * 1000
 
 
+def wait_healthy(url, attempts=30, delay=2.0):
+    """The load balancer can lag the rollout by a few seconds: retry before judging the release."""
+    for i in range(attempts):
+        try:
+            with urllib.request.urlopen(url, timeout=10) as r:
+                return json.load(r).get("version")
+        except Exception:
+            if i == attempts - 1:
+                raise
+            time.sleep(delay)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("base_url")
@@ -35,8 +47,7 @@ def main():
     data = json.loads((ROOT / "eval" / "dataset.json").read_text(encoding="utf-8"))
     latencies, correct = [], 0
     try:
-        with urllib.request.urlopen(base + "/api/health", timeout=10) as r:
-            version = json.load(r).get("version")
+        version = wait_healthy(base + "/api/health")
         for item in data:
             body, ms = post(base + "/api/analyze", {k: item[k] for k in ("title", "content", "source")})
             latencies.append(ms)

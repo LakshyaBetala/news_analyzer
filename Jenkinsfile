@@ -21,7 +21,6 @@ pipeline {
         GIT_SHORT   = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : 'local'}"
         APP_VERSION = "${env.BUILD_NUMBER}.${GIT_SHORT}"
         TF_IN_AUTOMATION = '1'
-        RELEASE_STATUS   = 'BLOCKED'   // flipped to PROMOTED / ROLLED_BACK as the run progresses
     }
 
     stages {
@@ -141,7 +140,7 @@ pipeline {
                                 case "$CPU" in None|"") ;; *) CPU_ARG="--cpu $(printf '%.1f' $CPU)";; esac
                             fi
                             python scripts/record_release.py --version "$APP_VERSION" --commit "$GIT_SHORT" \
-                                --message "$(git log -1 --pretty=%s)" --status "$RELEASE_STATUS" \
+                                --message "$(git log -1 --pretty=%s)" --status "${RELEASE_STATUS:-BLOCKED}" \
                                 --eval eval_result.json --smoke smoke.json $CPU_ARG
                             [ -f releases.json ] && aws s3 cp releases.json s3://$BUCKET/releases.json
                             if [ -f eval_result.json ]; then
@@ -158,7 +157,7 @@ pipeline {
             }
         }
         success { echo "Released ${APP_VERSION}: PROMOTED" }
-        failure { echo "Release ${APP_VERSION} did not ship (${env.RELEASE_STATUS}). The previous version is still live." }
+        failure { echo "Release ${APP_VERSION} did not ship (${env.RELEASE_STATUS ?: "BLOCKED"}). The previous version is still live." }
     }
 }
 
