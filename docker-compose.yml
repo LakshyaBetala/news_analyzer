@@ -2,7 +2,7 @@
 #   localstack -> stands in for AWS (S3, IAM, CloudWatch), free, no account
 #   k3s        -> Kubernetes cluster (stands in for the EC2 instance)
 #   jenkins    -> the CD pipeline (pre-configured, job already created)
-# Start: docker compose up -d --build     Jenkins: http://localhost:8080 (admin / admin)
+# Start: docker compose up -d --build     Jenkins: http://localhost:8090 (admin / admin)
 services:
   localstack:
     image: localstack/localstack:3.8
@@ -27,7 +27,7 @@ services:
     build: ./jenkins
     container_name: cloudforge-jenkins
     ports:
-      - "8080:8080"
+      - "8090:8080"
     environment:
       CASC_JENKINS_CONFIG: /casc/jenkins.yaml
     volumes:

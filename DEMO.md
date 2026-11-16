@@ -5,7 +5,7 @@
 - [ ] Docker Desktop running
 - [ ] `docker compose up -d --build` finished with no errors (`docker compose ps` shows 3 services Up)
 - [ ] Repo pushed to GitHub `main`
-- [ ] Open http://localhost:8080, log in `admin` / `admin`, run **Build with Parameters** (TARGET = local) once, and wait for green
+- [ ] Open http://localhost:8090, log in `admin` / `admin`, run **Build with Parameters** (TARGET = local) once, and wait for green
 - [ ] http://localhost:8081 and http://localhost:8081/releases open; Control Room shows 1 green PROMOTED row
 - [ ] Take screenshots for the slides: Jenkins stage view, Control Room, GitHub Actions run, `docker compose ps`
 - [ ] Keep the "bad change" ready in your editor (below), but do not push it yet

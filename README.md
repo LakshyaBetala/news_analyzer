@@ -57,7 +57,7 @@ docker compose up -d --build            # first build ~10 min, downloads ~2 GB
 
 | Service | URL |
 |---|---|
-| Jenkins (login `admin` / `admin`, job `cloudforge` already created) | http://localhost:8080 |
+| Jenkins (login `admin` / `admin`, job `cloudforge` already created) | http://localhost:8090 |
 | Deployed app, after the first pipeline run | http://localhost:8081 and http://localhost:8081/releases |
 | LocalStack health | http://localhost:4566/_localstack/health |
 

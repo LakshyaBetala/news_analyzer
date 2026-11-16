@@ -31,6 +31,9 @@
   .metrics { display:flex; flex-wrap:wrap; gap:18px; margin:10px 0 6px; font-size:14px; }
   .metrics div span { color:var(--mute); }
   .why { margin-top:6px; padding:8px 10px; background:#0b1220; border-radius:8px; font-size:14px; }
+  .trend { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:20px; }
+  .trend h2 { margin:0 0 6px; font-size:14px; color:var(--mute); font-weight:600; }
+  .trend svg { width:100%; height:110px; display:block; }
   .empty { text-align:center; color:var(--mute); padding:40px 0; }
 </style>
 </head>
@@ -42,6 +45,7 @@
   </header>
   <p class="sub">Every push is scored on accuracy against a labeled article set before it is allowed to ship.</p>
   <div class="stats" id="stats"></div>
+  <div class="trend" id="trend" hidden><h2>Model accuracy per release (dashed line = 85% gate)</h2><svg id="chart" viewBox="0 0 600 110" preserveAspectRatio="none" role="img" aria-label="Accuracy per release"></svg></div>
   <div id="list"><div class="empty">Loading releases&hellip;</div></div>
 </div>
 <script>
@@ -57,6 +61,7 @@ function render(rels) {
      <div class="stat"><b style="color:var(--ok)">${shipped}</b><span>Promoted</span></div>
      <div class="stat"><b style="color:var(--bad)">${stopped}</b><span>Blocked / rolled back</span></div>
      <div class="stat"><b>${rels.length ? pct(rels.find(r => r.status === 'PROMOTED')?.accuracy) : '&ndash;'}</b><span>Live accuracy</span></div>`;
+  drawTrend(rels.slice().reverse());
   if (!rels.length) {
     document.getElementById('list').innerHTML = '<div class="empty">No releases recorded yet. Push a commit and let Jenkins run.</div>';
     return;
@@ -72,6 +77,21 @@ function render(rels) {
       </div>
       <div class="why">${esc(r.verdict || '')}</div>
     </div>`).join('');
+}
+
+// oldest -> newest; one dot per release, green if promoted, red otherwise
+function drawTrend(rels) {
+  const pts = rels.filter(r => r.accuracy != null);
+  const box = document.getElementById('trend');
+  box.hidden = pts.length < 1;
+  if (box.hidden) return;
+  const W = 600, H = 110, pad = 10, y = a => H - pad - a * (H - 2 * pad);
+  const x = i => pts.length === 1 ? W / 2 : pad + i * (W - 2 * pad) / (pts.length - 1);
+  const line = pts.map((r, i) => `${x(i)},${y(r.accuracy)}`).join(' ');
+  document.getElementById('chart').innerHTML =
+    `<line x1="0" x2="${W}" y1="${y(0.85)}" y2="${y(0.85)}" stroke="#94a3b8" stroke-dasharray="4 4"/>
+     <polyline points="${line}" fill="none" stroke="#38bdf8" stroke-width="2"/>` +
+    pts.map((r, i) => `<circle cx="${x(i)}" cy="${y(r.accuracy)}" r="5" fill="${r.status === 'PROMOTED' ? '#22c55e' : '#ef4444'}"><title>v${esc(r.version)}: ${pct(r.accuracy)} ${esc(r.status)}</title></circle>`).join('');
 }
 
 fetch('/api/releases').then(r => r.json()).then(render).catch(() => render([]));
