@@ -22,3 +22,13 @@ tests/
 README.md
 Jenkinsfile
 
+infra/
+k8s/
+eval/
+scripts/
+jenkins/
+.github/
+*.pdf
+releases.json
+eval_result.json
+smoke.json
