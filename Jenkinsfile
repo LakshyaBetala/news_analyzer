@@ -145,7 +145,11 @@ pipeline {
                             aws s3 cp releases.json s3://$BUCKET/releases.json
                             if [ -f eval_result.json ]; then
                                 ACC=$(python -c "import json;print(round(json.load(open('eval_result.json'))['accuracy']*100,1))")
-                                aws cloudwatch put-metric-data --namespace CloudForge --metric-name AccuracyPercent --value $ACC || echo "(CloudWatch metric skipped: emulator does not support this call)"
+                                # CloudWatch Query API via signed curl: works on real AWS and on LocalStack, which rejects the CLI's newer protocol
+                                CW_URL=${AWS_ENDPOINT_URL:-https://monitoring.$AWS_DEFAULT_REGION.amazonaws.com}
+                                curl -sf --aws-sigv4 "aws:amz:$AWS_DEFAULT_REGION:monitoring" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" "$CW_URL" \
+                                    -d "Action=PutMetricData&Version=2010-08-01&Namespace=CloudForge&MetricData.member.1.MetricName=AccuracyPercent&MetricData.member.1.Value=$ACC&MetricData.member.1.Unit=Percent" >/dev/null \
+                                    && echo "CloudWatch: AccuracyPercent=$ACC" || echo "WARNING: CloudWatch metric not sent"
                             fi
                         '''
                     }
